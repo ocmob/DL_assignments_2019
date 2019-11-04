@@ -12,6 +12,11 @@ import os
 from mlp_pytorch import MLP
 import cifar10_utils
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
 # Default constants
 DNN_HIDDEN_UNITS_DEFAULT = '100'
 LEARNING_RATE_DEFAULT = 2e-3
@@ -46,7 +51,16 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  predictions = predictions.clone().detach()
+  targets = targets.clone().detach()
+  pred = predictions.numpy()
+
+  tg = np.zeros_like(pred)
+  i1 = np.arange(0, len(tg), 1)
+
+  tg[i1, targets.numpy()] += 1
+  i2 = np.argmax(pred, axis = 1)
+  accuracy = tg[i1, i2].sum()/tg.sum()
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -75,11 +89,66 @@ def train():
 
   # Get negative slope parameter for LeakyReLU
   neg_slope = FLAGS.neg_slope
-  
+
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  import matplotlib.pyplot as plt
+
+  data = cifar10_utils.get_cifar10(FLAGS.data_dir)
+
+  train = data['train']
+  test = data['test']
+
+  dim_x = train.images.shape[1]*train.images.shape[2]*train.images.shape[3]
+
+  mlp = MLP(dim_x, dnn_hidden_units, train.labels.shape[1], neg_slope)
+
+  criterion = nn.CrossEntropyLoss()
+  optimizer = optim.SGD(mlp.parameters(), FLAGS.learning_rate)
+
+  loss_train = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+  loss_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+  accuracy_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+
+  images_test_np = test.images
+  labels_test_np = test.labels
+  images_test_np = np.reshape(images_test_np, (images_test_np.shape[0], dim_x))
+
+  images_test = torch.from_numpy(images_test_np)
+  labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
+
+  for i in range(0, FLAGS.max_steps):
+      print('iter', i+1, end='\r')
+      images_np, labels_np = train.next_batch(FLAGS.batch_size) 
+      images_np = np.reshape(images_np, (images_np.shape[0], dim_x))
+
+      images = torch.from_numpy(images_np)
+      labels = torch.from_numpy(np.argmax(labels_np, axis = 1))
+
+      optimizer.zero_grad()
+
+      pred = mlp(images)
+      loss = criterion(pred, labels.long())
+      loss.backward()
+      optimizer.step()
+
+      if (i+1) % FLAGS.eval_freq == 0:
+          loss_train[i // FLAGS.eval_freq] = loss.item()
+          pred_test = mlp(images_test)
+          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
+          loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
+          print()
+          print('test_loss:', loss_test[i // FLAGS.eval_freq])
+          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+          print('train_loss:', loss_train[i // FLAGS.eval_freq])
+  fig, ax = plt.subplots(1, 2)
+  ax[0].plot(loss_train, label='Loss, train')
+  ax[0].plot(loss_test, label='Loss, test')
+  ax[1].plot(accuracy_test, label='Accuracy, test')
+  fig.legend()
+  plt.show()
+
   ########################
   # END OF YOUR CODE    #
   #######################

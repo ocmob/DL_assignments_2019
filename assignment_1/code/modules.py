@@ -271,7 +271,7 @@ class CrossEntropyModule(object):
     # END OF YOUR CODE    #
     #######################
 
-    return out.sum()
+    return out.mean()
 
   def backward(self, x, y):
     """

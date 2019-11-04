@@ -91,7 +91,18 @@ def train():
   mlp = MLP(dim_x, dnn_hidden_units, train.labels.shape[1], neg_slope)
   loss_module = CrossEntropyModule()
 
-  loss_train = np.zeros((FLAGS.max_steps, ))
+  weights_norms = []
+  grad_norms = []
+
+  weights_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+  for i in range(len(dnn_hidden_units)):
+      weights_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+
+  grad_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+  for i in range(len(dnn_hidden_units)):
+      grad_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+
+  loss_train = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
   loss_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
   accuracy_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
 
@@ -105,7 +116,7 @@ def train():
       images = np.reshape(images, (images.shape[0], dim_x))
 
       pred = mlp.forward(images)
-      loss_train[i] = loss_module.forward(pred, labels)
+      loss = loss_module.forward(pred, labels)
       loss_grad = loss_module.backward(pred, labels)
       mlp.backward(loss_grad)
 
@@ -115,18 +126,42 @@ def train():
               module.params['bias'] -= 1/FLAGS.batch_size*FLAGS.learning_rate*module.grads['bias']
       if (i+1) % FLAGS.eval_freq == 0:
           pred_test = mlp.forward(images_test)
+          loss_train[i // FLAGS.eval_freq] = loss
           accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
           loss_test[i // FLAGS.eval_freq] = loss_module.forward(pred_test, labels_test)
+
+          cnt = 0
+          for module in reversed(mlp.modules):
+              if isinstance(module, LinearModule):
+                  weights_norms[cnt][i // FLAGS.eval_freq] = module.params['weight'].sum()+module.params['bias'].sum()
+                  cnt += 1
+
+          cnt = 0
+          for module in reversed(mlp.modules):
+              if isinstance(module, LinearModule):
+                  grad_norms[cnt][i // FLAGS.eval_freq] = module.grads['weight'].sum()+module.grads['bias'].sum()
+                  cnt += 1
+
           print()
           print('test_loss:', loss_test[i // FLAGS.eval_freq])
           print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
-          print('train_loss:', loss_train[i])
-  #fig, ax = plt.subplots(1, 3)
+          print('train_loss:', loss_train[i // FLAGS.eval_freq])
+  fig, ax = plt.subplots(1, 2)
   #ax[0].plot(loss_train, label='Loss, train')
-  #ax[1].plot(loss_test, label='Loss, test')
-  #ax[2].plot(accuracy_test, label='Accuracy, test')
-  #fig.legend()
-  #plt.show()
+  #ax[0].plot(loss_test, label='Loss, test')
+  #ax[1].plot(accuracy_test, label='Accuracy, test')
+  indices = np.arange(0, len(loss_test), 1)
+  for i, array in enumerate(grad_norms):
+      ax[0].scatter(indices, array, label='grad layer {}'.format(len(dnn_hidden_units)+1-i))
+      ax[0].legend()
+      print(array)
+  for i, array in enumerate(weights_norms):
+      ax[1].scatter(indices, array, label='weights layer {}'.format(len(dnn_hidden_units)+1-i))
+      ax[1].legend()
+      print(array)
+  fig.tight_layout()
+  plt.show()
+
 
   ########################
   # END OF YOUR CODE    #
