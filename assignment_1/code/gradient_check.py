@@ -14,7 +14,6 @@ def eval_numerical_gradient(f, x, verbose=True, h=0.00001):
     x[ix] = oldval - h
     fxmh = f(x)
     x[ix] = oldval
-
     grad[ix] = (fxph - fxmh) / (2 * h)
     if verbose:
       print(ix, grad[ix])

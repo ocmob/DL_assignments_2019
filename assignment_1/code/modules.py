@@ -4,6 +4,7 @@ You should fill in code into indicated sections.
 """
 import numpy as np
 
+
 class LinearModule(object):
   """
   Linear module. Applies a linear transformation to the input data. 
@@ -28,7 +29,12 @@ class LinearModule(object):
     #######################
     self.params = {'weight': None, 'bias': None}
     self.grads = {'weight': None, 'bias': None}
-    raise NotImplementedError
+
+    self.params['weight'] = np.random.normal(0, 0.0001, size=(out_features, in_features))
+    self.params['bias'] = np.zeros((out_features,))
+
+    self.grads['weight'] = np.zeros((in_features, out_features)) # following numerator notation
+    self.grads['bias'] = np.zeros((out_features,))
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -51,7 +57,14 @@ class LinearModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    # out = B x D(ln)
+    # x = B x D(ln-1)
+    # W = D(ln) x D(ln-1)
+    # B = D(ln)
+    out = x @ self.params['weight'].T + self.params['bias']
+    self.x = x.copy()
+    #print('Forward, linear')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -75,7 +88,11 @@ class LinearModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    dx = dout @ self.params['weight']
+    self.grads['weight'] = dout.T @ self.x
+    self.grads['bias'] = np.sum(dout, axis=0)
+    #print('Backward, linear')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -100,7 +117,7 @@ class LeakyReLUModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.neg_slope = neg_slope
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -123,7 +140,10 @@ class LeakyReLUModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.x = x.copy()
+    out = x*(x > 0) + self.neg_slope*x*(x <= 0)
+    #print('Forward, lrelu')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -146,7 +166,12 @@ class LeakyReLUModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    dx_chain = self.x
+    dx_chain[dx_chain > 0] = 1
+    dx_chain[dx_chain <= 0] = -self.neg_slope
+    dx = dout*dx_chain
+    #print('Backward, lrelu')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################    
@@ -177,7 +202,11 @@ class SoftMaxModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    x_shift = np.exp(x - np.max(x, axis = 1, keepdims=True))
+    out = x_shift/x_shift.sum(axis=1, keepdims=True)
+    self.out = out.copy()
+    #print('Forward, softmax')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -199,7 +228,13 @@ class SoftMaxModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    i1 = np.arange(0, len(dout), 1) 
+    i2 = np.argmin(dout, axis=1) 
+    dx = self.out
+    dx[i1, i2] = dx[i1, i2] - 1
+    #print('Backward, softmax')
+    #breakpoint()
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -227,12 +262,16 @@ class CrossEntropyModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    i0 = np.arange(0, len(x), 1)
+    i1 = np.argmax(y, axis = 1)
+    out = -np.log(x[i0, i1])
+    #print('Forward, Loss')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################
 
-    return out
+    return out.sum()
 
   def backward(self, x, y):
     """
@@ -250,7 +289,12 @@ class CrossEntropyModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    dx = x*(y!=0)
+    i0 = np.arange(0, len(dx), 1)
+    i1 = np.argmax(dx, axis = 1)
+    dx[i0, i1] = -1/dx[i0, i1]
+    #print('Backward, Loss')
+    #breakpoint()
     ########################
     # END OF YOUR CODE    #
     #######################

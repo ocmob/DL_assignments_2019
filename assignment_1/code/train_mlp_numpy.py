@@ -10,7 +10,7 @@ import argparse
 import numpy as np
 import os
 from mlp_numpy import MLP
-from modules import CrossEntropyModule
+from modules import CrossEntropyModule, LinearModule
 import cifar10_utils
 
 # Default constants
@@ -47,7 +47,9 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  i1 = np.arange(0, len(targets), 1)
+  i2 = np.argmax(predictions, axis = 1)
+  accuracy = targets[i1, i2].sum()/targets.sum()
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -80,7 +82,52 @@ def train():
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  import matplotlib.pyplot as plt
+  data = cifar10_utils.get_cifar10(FLAGS.data_dir)
+  train = data['train']
+  test = data['test']
+  dim_x = train.images.shape[1]*train.images.shape[2]*train.images.shape[3]
+
+  mlp = MLP(dim_x, dnn_hidden_units, train.labels.shape[1], neg_slope)
+  loss_module = CrossEntropyModule()
+
+  loss_train = np.zeros((FLAGS.max_steps, ))
+  loss_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+  accuracy_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+
+  images_test = test.images
+  labels_test = test.labels
+  images_test = np.reshape(images_test, (images_test.shape[0], dim_x))
+
+  for i in range(0, FLAGS.max_steps):
+      print('iter', i+1, end='\r')
+      images, labels = train.next_batch(FLAGS.batch_size) 
+      images = np.reshape(images, (images.shape[0], dim_x))
+
+      pred = mlp.forward(images)
+      loss_train[i] = loss_module.forward(pred, labels)
+      loss_grad = loss_module.backward(pred, labels)
+      mlp.backward(loss_grad)
+
+      for module in reversed(mlp.modules):
+          if isinstance(module, LinearModule):
+              module.params['weight'] -= 1/FLAGS.batch_size*FLAGS.learning_rate*module.grads['weight']
+              module.params['bias'] -= 1/FLAGS.batch_size*FLAGS.learning_rate*module.grads['bias']
+      if (i+1) % FLAGS.eval_freq == 0:
+          pred_test = mlp.forward(images_test)
+          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
+          loss_test[i // FLAGS.eval_freq] = loss_module.forward(pred_test, labels_test)
+          print()
+          print('test_loss:', loss_test[i // FLAGS.eval_freq])
+          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+          print('train_loss:', loss_train[i])
+  #fig, ax = plt.subplots(1, 3)
+  #ax[0].plot(loss_train, label='Loss, train')
+  #ax[1].plot(loss_test, label='Loss, test')
+  #ax[2].plot(accuracy_test, label='Accuracy, test')
+  #fig.legend()
+  #plt.show()
+
   ########################
   # END OF YOUR CODE    #
   #######################

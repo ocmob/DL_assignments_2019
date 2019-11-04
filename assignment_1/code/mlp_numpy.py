@@ -37,7 +37,14 @@ class MLP(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.modules = []
+    no_u_previous = n_inputs
+    for no_u in n_hidden:
+        self.modules.append(LinearModule(no_u_previous, no_u))
+        self.modules.append(LeakyReLUModule(neg_slope))
+        no_u_previous = no_u
+    self.modules.append(LinearModule(no_u_previous, n_classes))
+    self.modules.append(SoftMaxModule())
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -59,12 +66,13 @@ class MLP(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    for module in self.modules:
+        x = module.forward(x)
     ########################
     # END OF YOUR CODE    #
     #######################
 
-    return out
+    return x
 
   def backward(self, dout):
     """
@@ -80,7 +88,8 @@ class MLP(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    for module in reversed(self.modules):
+        dout = module.backward(dout)
     ########################
     # END OF YOUR CODE    #
     #######################

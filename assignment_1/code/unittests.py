@@ -150,5 +150,5 @@ if __name__ == '__main__':
   suite = unittest.TestLoader().loadTestsFromTestCase(TestLayers)
   unittest.TextTestRunner(verbosity=2).run(suite)
 
-  suite = unittest.TestLoader().loadTestsFromTestCase(TestBatchNorm)
-  unittest.TextTestRunner(verbosity=3).run(suite)
+  #suite = unittest.TestLoader().loadTestsFromTestCase(TestBatchNorm)
+  #unittest.TextTestRunner(verbosity=3).run(suite)

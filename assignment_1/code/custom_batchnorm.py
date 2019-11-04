@@ -228,7 +228,7 @@ if __name__=='__main__':
     bn_auto = CustomBatchNormAutograd(n_neurons)
     y_auto = bn_auto(x)
 
-    assert
+    #assert
 
     print('\tmeans={}\n\tvars={}'.format(y_auto.mean(dim=0).data, y_auto.var(dim=0).data))
 
