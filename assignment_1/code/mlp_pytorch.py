@@ -45,12 +45,10 @@ class MLP(nn.Module):
     no_u_previous = n_inputs
     for no_u in n_hidden:
         layer = nn.Linear(no_u_previous, no_u)
-        #nn.init.normal_(layer.weight, std=0.0001)
         self.module_list.append(layer)
         self.module_list.append(nn.LeakyReLU(neg_slope))
         no_u_previous = no_u
     layer = nn.Linear(no_u_previous, n_classes)
-    #nn.init.normal_(layer.weight, std=0.0001)
     self.module_list.append(layer)
     ########################
     # END OF YOUR CODE    #

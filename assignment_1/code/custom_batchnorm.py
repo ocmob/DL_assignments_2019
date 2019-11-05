@@ -37,7 +37,10 @@ class CustomBatchNormAutograd(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-
+    self.n_neurons = n_neurons
+    self.eps = eps
+    self.gamma = nn.Parameter(torch.ones(n_neurons))
+    self.beta = nn.Parameter(torch.zeros(n_neurons))
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -60,7 +63,17 @@ class CustomBatchNormAutograd(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
+    if int(input.shape[1]) != self.n_neurons:
+        raise Exception("FATAL ERROR: input batch size {} different than n_neurons {}".format(int(input.shape[1]), self.n_neurons))
 
+    mu = input.mean(dim = 0)
+    var = input.var(dim = 0, unbiased = False)
+    num = input - mu
+    root = var + self.eps
+    den = root.sqrt()
+    x_hat = num/den
+    scale = self.gamma*x_hat
+    out = scale+self.beta
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -119,7 +132,7 @@ class CustomBatchNormManualFunction(torch.autograd.Function):
     # END OF YOUR CODE    #
     #######################
 
-    return out
+    #return out
 
 
   @staticmethod
@@ -148,7 +161,7 @@ class CustomBatchNormManualFunction(torch.autograd.Function):
     #######################
 
     # return gradients of the three tensor inputs and None for the constant eps
-    return grad_input, grad_gamma, grad_beta, None
+    #return grad_input, grad_gamma, grad_beta, None
 
 
 
@@ -208,7 +221,7 @@ class CustomBatchNormManualModule(nn.Module):
     # END OF YOUR CODE    #
     #######################
 
-    return out
+    #return out
 
 
 
