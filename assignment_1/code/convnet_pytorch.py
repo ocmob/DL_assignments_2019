@@ -29,7 +29,46 @@ class ConvNet(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    super(ConvNet, self).__init__()
+    self.module_list = nn.ModuleList()
+    self.module_list.append((nn.Conv2d(3, 64, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(64))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.MaxPool2d(3, 2, 1))
+    self.module_list.append(nn.Conv2d(64, 128, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(128))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.MaxPool2d(3, 2, 1))
+    self.module_list.append(nn.Conv2d(128, 256, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(256))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.Conv2d(256, 256, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(256))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.MaxPool2d(3, 2, 1))
+    self.module_list.append(nn.Conv2d(256, 512, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(512))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.Conv2d(512, 512, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(512))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.MaxPool2d(3, 2, 1))
+    self.module_list.append(nn.Conv2d(512, 512, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(512))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.Conv2d(512, 512, 3, padding=1))
+    self.module_list.append(torch.nn.BatchNorm2d(512))
+    self.module_list.append(torch.nn.ReLU())
+
+    self.module_list.append(nn.MaxPool2d(3, 2, 1))
+    self.module_list.append(nn.Linear(512, 10))
     ########################
     # END OF YOUR CODE    #
     #######################
