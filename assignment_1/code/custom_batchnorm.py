@@ -207,7 +207,10 @@ class CustomBatchNormManualModule(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-
+    self.n_neurons = n_neurons
+    self.eps = eps
+    self.gamma = nn.Parameter(torch.ones(n_neurons))
+    self.beta = nn.Parameter(torch.zeros(n_neurons))
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -230,12 +233,13 @@ class CustomBatchNormManualModule(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-
+    if int(input.shape[1]) != self.n_neurons:
+        raise Exception("FATAL ERROR: input batch size {} different than n_neurons {}".format(int(input.shape[1]), self.n_neurons))
     ########################
     # END OF YOUR CODE    #
     #######################
 
-    #return out
+    return CustomBatchNormManualFunction.apply(input, self.gamma, self.beta, self.eps)
 
 
 
