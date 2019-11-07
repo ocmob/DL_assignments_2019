@@ -127,12 +127,17 @@ class CustomBatchNormManualFunction(torch.autograd.Function):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-
+    
+    a = input - input.mean(dim = 0)
+    d = 1/((input.var(unbiased=False, dim =0)+eps).sqrt())
+    Xhat = a*d
+    out = Xhat*gamma + beta
+    ctx.save_for_backward(d, Xhat, gamma)
     ########################
     # END OF YOUR CODE    #
     #######################
 
-    #return out
+    return out
 
 
   @staticmethod
@@ -155,13 +160,22 @@ class CustomBatchNormManualFunction(torch.autograd.Function):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
+    d, Xhat, gamma = ctx.saved_tensors
+    B = int(Xhat.shape[0])
+    ones = torch.ones((B, B), dtype=torch.double)
+
+    grad_beta = grad_output.sum(axis = 0)
+    grad_gamma = (grad_output*Xhat).sum(axis=0)
+
+    dXhat = grad_output*gamma
+    grad_input = (dXhat - ones.T @ dXhat / B - Xhat * (ones.T @ (dXhat * Xhat)) / B)*d
 
     ########################
     # END OF YOUR CODE    #
     #######################
 
     # return gradients of the three tensor inputs and None for the constant eps
-    #return grad_input, grad_gamma, grad_beta, None
+    return grad_input, grad_gamma, grad_beta, None
 
 
 
