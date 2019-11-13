@@ -6,6 +6,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import torch.nn as nn
+
 class ConvNet(nn.Module):
   """
   This class implements a Convolutional Neural Network in PyTorch.
@@ -31,44 +33,44 @@ class ConvNet(nn.Module):
     #######################
     super(ConvNet, self).__init__()
     self.module_list = nn.ModuleList()
-    self.module_list.append((nn.Conv2d(3, 64, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(64))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.Conv2d(n_channels, 64, 3, padding=1))
+    self.module_list.append(nn.BatchNorm2d(64))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.MaxPool2d(3, 2, 1))
     self.module_list.append(nn.Conv2d(64, 128, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(128))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(128))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.MaxPool2d(3, 2, 1))
     self.module_list.append(nn.Conv2d(128, 256, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(256))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(256))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.Conv2d(256, 256, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(256))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(256))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.MaxPool2d(3, 2, 1))
     self.module_list.append(nn.Conv2d(256, 512, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(512))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(512))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.Conv2d(512, 512, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(512))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(512))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.MaxPool2d(3, 2, 1))
     self.module_list.append(nn.Conv2d(512, 512, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(512))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(512))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.Conv2d(512, 512, 3, padding=1))
-    self.module_list.append(torch.nn.BatchNorm2d(512))
-    self.module_list.append(torch.nn.ReLU())
+    self.module_list.append(nn.BatchNorm2d(512))
+    self.module_list.append(nn.ReLU())
 
     self.module_list.append(nn.MaxPool2d(3, 2, 1))
-    self.module_list.append(nn.Linear(512, 10))
+    self.module_list.append(nn.Linear(512, n_classes))
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -90,7 +92,10 @@ class ConvNet(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    for module in self.module_list[:-1]:
+        x = module(x)
+    x = x.view(x.shape[0], -1)
+    out = self.module_list[-1](x)
     ########################
     # END OF YOUR CODE    #
     #######################
