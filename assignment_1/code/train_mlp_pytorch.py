@@ -102,31 +102,67 @@ def train():
 
   dim_x = train.images.shape[1]*train.images.shape[2]*train.images.shape[3]
 
-  mlp = MLP(dim_x, dnn_hidden_units, train.labels.shape[1], neg_slope)
+  if FLAGS.init_type == 1:
+      init_name = 'xavier_uniform'
+  elif FLAGS.init_type == 2:
+      init_name = 'xavier_normal'
+  elif FLAGS.init_type == 3:
+      init_name = 'kaiming_uniform'
+  elif FLAGS.init_type == 4:
+      init_name = 'kaiming_normal'
+  elif FLAGS.init_type == 5:
+      init_name = 'orthogonal'
+  else:
+      init_name = 'Pytorch default'
+
+  mlp = MLP(dim_x, dnn_hidden_units, train.labels.shape[1], neg_slope, FLAGS.init_type)
 
   criterion = nn.CrossEntropyLoss()
-  optimizer = optim.SGD(mlp.parameters(), FLAGS.learning_rate)
+
+  if FLAGS.optim_type == 1:
+      opt_name = 'SGD'
+      optimizer = optim.SGD(mlp.parameters(), FLAGS.learning_rate, weight_decay = FLAGS.weight_decay)
+  elif FLAGS.optim_type == 2:
+      opt_name = 'RMSprop'
+      optimizer = optim.RMSprop(mlp.parameters(), FLAGS.learning_rate, weight_decay = FLAGS.weight_decay)
+  elif FLAGS.optim_type == 3:
+      opt_name = 'Adagrad'
+      optimizer = optim.Adagrad(mlp.parameters(), FLAGS.learning_rate, weight_decay = FLAGS.weight_decay)
+  else:
+      opt_name = 'Adam'
+      optimizer = optim.Adam(mlp.parameters(), FLAGS.learning_rate, weight_decay = FLAGS.weight_decay)
+
+  scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, verbose=True, patience = 5)
+
+  weights_norms = []
+  grad_norms = []
+
+  weights_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+  for i in range(len(dnn_hidden_units)):
+      weights_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+
+  grad_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
+  for i in range(len(dnn_hidden_units)):
+      grad_norms.append(np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), ))))
 
   loss_train = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
-  loss_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
-  accuracy_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+  loss_cv = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
+  accuracy_cv = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
 
-  images_test_np = test.images
-  labels_test_np = test.labels
+  cv_samples = len(test.images)//2
+  test_samples = len(test.images)-cv_samples
+
+  images_cv_np, labels_cv_np = test.next_batch(cv_samples)
+  images_test_np, labels_test_np = test.next_batch(test_samples)
+
+  images_cv_np = np.reshape(images_cv_np, (images_test_np.shape[0], dim_x))
   images_test_np = np.reshape(images_test_np, (images_test_np.shape[0], dim_x))
+
+  images_cv = torch.from_numpy(images_cv_np)
+  labels_cv = torch.from_numpy(np.argmax(labels_cv_np, axis = 1))
 
   images_test = torch.from_numpy(images_test_np)
   labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
-
-  ## Work on a branch - do not modify the original code (for now)
-  ## Plots of weights - should be relatively easy
-  ## Deep architectures - simple mod to a bash script
-  ## Different initializations - modify the constructor
-
-  ## Learning Rate Schedule ?
-  ## Early stopping ?
-  ## Modify to run on GPU
-
 
   for i in range(0, FLAGS.max_steps):
       print('iter', i+1, end='\r')
@@ -145,36 +181,72 @@ def train():
 
       if (i+1) % FLAGS.eval_freq == 0:
           loss_train[i // FLAGS.eval_freq] = loss.item()
-          pred_test = mlp(images_test)
-          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
-          loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
+
+          with torch.no_grad():
+              cnt = 0
+              for module in mlp.module_list:
+                  if isinstance(module, nn.Linear):
+                      weights_norms[cnt][i // FLAGS.eval_freq] = module.weight.abs().sum().item()
+                      cnt += 1
+
+              cnt = 0
+              for module in mlp.module_list:
+                  if isinstance(module, nn.Linear):
+                      grad_norms[cnt][i // FLAGS.eval_freq] = module.weight.grad.abs().sum().item()
+                      cnt += 1
+
+          pred_cv = mlp(images_cv)
+          accuracy_cv[i // FLAGS.eval_freq] = accuracy(pred_cv, labels_cv)
+          loss_cv[i // FLAGS.eval_freq] = criterion(pred_cv, labels_cv.long()).item()
           print()
-          print('test_loss:', loss_test[i // FLAGS.eval_freq])
-          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+          print('cv_loss:', loss_cv[i // FLAGS.eval_freq])
+          print('cv_accuracy:', accuracy_cv[i // FLAGS.eval_freq])
           print('train_loss:', loss_train[i // FLAGS.eval_freq])
-  fig, ax = plt.subplots(1, 2, figsize=(10,5))
-  fig.suptitle('Training curves for Pytorch MLP')
+          scheduler.step(loss_cv[i // FLAGS.eval_freq])
+
+
+  pred_test = mlp(images_test)
+  accuracy_test = accuracy(pred_test, labels_test)
+
+  fig, ax = plt.subplots(1, 2, figsize=(12,6))
+  fig.suptitle('Training curves for Pytorch MLP. Final result: {:.4f} test accuracy\nParameters: Hidden units config: {}, Init type: {}, Optimizer type: {}, Weight decay: {} '.format(accuracy_test, FLAGS.dnn_hidden_units, init_name, opt_name, FLAGS.weight_decay))
 
   ax[0].set_title('Loss')
   ax[0].set_ylabel('Loss value')
   ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
   ax[0].plot(loss_train, label='Train')
-  ax[0].plot(loss_test, label='Test')
+  ax[0].plot(loss_cv, label='Cross-validation')
   ax[0].legend()
 
   ax[1].set_title('Accuracy')
   ax[1].set_ylabel('Accuracy value')
   ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
-  ax[1].plot(accuracy_test, label='Test')
+  ax[1].plot(accuracy_cv, label='Cross-validation')
   ax[1].legend()
   
-  import time
+  ## Lib, Nettype, Filetype, Init type, Steps, Batchsize, Eval_freq, Accuracy
 
-  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, Negslope
-
-  fig_name = 'pt_mlp_training_0000_{}_{}_{}_{}.jpg'.format(
-          FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, FLAGS.neg_slope)
+  fig_name = 'pt_mlp_training_{}_{}_{}_{}_{:.4f}.jpg'.format(FLAGS.init_type, FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, accuracy_test)
   plt.savefig(fig_name)
+
+  fig, ax = plt.subplots(1, 2, figsize=(12,6))
+  fig.suptitle('Norms of weight and gradient tensors for Pytorch MLP.'.format(accuracy_test, FLAGS.dnn_hidden_units, init_name, opt_name, FLAGS.weight_decay))
+  indices = np.arange(0, len(loss_cv), 1)
+  for i, array in enumerate(grad_norms):
+      ax[0].scatter(indices, array, label='Layer {}'.format(len(dnn_hidden_units)+1-i))
+  ax[0].set_title('Weight gradient matrix norms')
+  ax[0].set_ylabel('Norm')
+  ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+  ax[0].legend()
+  for i, array in enumerate(weights_norms):
+      ax[1].scatter(indices, array, label='Layer {}'.format(len(dnn_hidden_units)+1-i))
+  ax[1].set_title('Weight matrix norms')
+  ax[1].set_ylabel('Norm')
+  ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+  ax[1].legend()
+  fig_name = 'pt_mlp_norms_{}_{}_{}_{}_{:.4f}.jpg'.format(FLAGS.init_type, FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, accuracy_test)
+  plt.savefig(fig_name)
+  plt.show()
 
   ########################
   # END OF YOUR CODE    #
@@ -217,6 +289,12 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   parser.add_argument('--neg_slope', type=float, default=NEG_SLOPE_DEFAULT,
                       help='Negative slope parameter for LeakyReLU')
+  parser.add_argument('--init_type', type=float, default=0,
+                      help='Type of initialization for linear layers')
+  parser.add_argument('--optim_type', type=float, default=0,
+                      help='Type of optimizer')
+  parser.add_argument('--weight_decay', type=float, default=0.1,
+                      help='Amount of weight decay')
   FLAGS, unparsed = parser.parse_known_args()
 
   main()

@@ -17,7 +17,7 @@ class MLP(nn.Module):
   Once initialized an MLP object can perform forward.
   """
 
-  def __init__(self, n_inputs, n_hidden, n_classes, neg_slope):
+  def __init__(self, n_inputs, n_hidden, n_classes, neg_slope, init=0):
     """
     Initializes MLP object. 
     
@@ -46,9 +46,29 @@ class MLP(nn.Module):
     for no_u in n_hidden:
         layer = nn.Linear(no_u_previous, no_u)
         self.module_list.append(layer)
+        if init == 1:
+            nn.init.xavier_uniform_(layer.weight)
+        elif init == 2:
+            nn.init.xavier_normal_(layer.weight)
+        elif init == 3:
+            nn.init.kaiming_uniform_(layer.weight)
+        elif init == 4:
+            nn.init.kaiming_normal_(layer.weight)
+        elif init == 5:
+            nn.init.orthogonal(layer.weight)
         self.module_list.append(nn.LeakyReLU(neg_slope))
         no_u_previous = no_u
     layer = nn.Linear(no_u_previous, n_classes)
+    if init == 1:
+        nn.init.xavier_uniform_(layer.weight)
+    elif init == 2:
+        nn.init.xavier_normal_(layer.weight)
+    elif init == 3:
+        nn.init.kaiming_uniform_(layer.weight)
+    elif init == 4:
+        nn.init.kaiming_normal_(layer.weight)
+    elif init == 5:
+        nn.init.orthogonal(layer.weight)
     self.module_list.append(layer)
     ########################
     # END OF YOUR CODE    #
