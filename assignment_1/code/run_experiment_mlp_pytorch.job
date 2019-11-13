@@ -1,0 +1,35 @@
+#!/bin/bash
+#SBATCH --job-name=kurbanski_cnn_pytorch
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=3:00:00
+#SBATCH --mem=60000M
+#SBATCH --partition=gpu_shared_course
+#SBATCH --gres=gpu:1
+
+module purge
+module load 2019
+module load Anaconda3/2018.12
+. /sw/arch/Debian9/EB_production/2019/software/Anaconda3/2018.12/etc/profile.d/conda.sh
+conda activate dl
+
+cp -r /home/lgpu0296/DL_assignments_2019/assignment_1/code/cifar10 ${TMPDIR}/cifar10
+
+OPTIM_TYPES=(1, 2, 3, 4)
+INIT_TYPES=(1, 2, 3, 4, 5, 6)
+DECAYS=(1, 0.1, 0.01, 0.001, 0.0001, 0.00001)
+UNITS_CONFIGS=('200,200,100,50,50,50,50,25,25,25,50,50,50,200,200,50,50,50,50,50','50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50','200,25,25,25,100,50,25','200,200,25,200,100,50,25','200,200,200,100,50,25','200,200,100,50,25','200,100,50,25','100,50,25','100,50','50,25','100','50','25')
+for OPTIM in "${OPTIM_TYPES[@]}"
+do
+    for INIT in "${INIT_TYPES[@]}"
+    do
+        for DECAY in "${DECAYS[@]}"
+        do
+            for UNITS_CONFIG in "${UNITS_CONFIGS[@]}"
+            do
+                python3 train_convnet_pytorch.py --optim_type $OPTIM --init_type $INIT --weight_decay $DECAY --dnn_hidden_units $UNITS_CONFIG --max_steps 20000 --data_dir ${TMPDIR}/cifar10/cifar-10-batches-py
+            done
+        done
+    done
+done

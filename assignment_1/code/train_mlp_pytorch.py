@@ -51,8 +51,8 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  predictions = predictions.clone().detach()
-  targets = targets.clone().detach()
+  predictions = predictions.clone().cpu().detach()
+  targets = targets.clone().cpu().detach()
   pred = predictions.numpy()
 
   tg = np.zeros_like(pred)
@@ -94,6 +94,10 @@ def train():
   # PUT YOUR CODE HERE  #
   #######################
   import matplotlib.pyplot as plt
+  
+  if not torch.cuda.is_available():
+      print("WARNING: CUDA DEVICE IS NOT AVAILABLE, WILL TRAIN ON CPU")
+  device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
   data = cifar10_utils.get_cifar10(FLAGS.data_dir)
 
@@ -116,6 +120,7 @@ def train():
       init_name = 'Pytorch default'
 
   mlp = MLP(dim_x, dnn_hidden_units, train.labels.shape[1], neg_slope, FLAGS.init_type)
+  mlp.to(device)
 
   criterion = nn.CrossEntropyLoss()
 
@@ -158,19 +163,13 @@ def train():
   images_cv_np = np.reshape(images_cv_np, (images_test_np.shape[0], dim_x))
   images_test_np = np.reshape(images_test_np, (images_test_np.shape[0], dim_x))
 
-  images_cv = torch.from_numpy(images_cv_np)
-  labels_cv = torch.from_numpy(np.argmax(labels_cv_np, axis = 1))
-
-  images_test = torch.from_numpy(images_test_np)
-  labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
-
   for i in range(0, FLAGS.max_steps):
       print('iter', i+1, end='\r')
       images_np, labels_np = train.next_batch(FLAGS.batch_size) 
       images_np = np.reshape(images_np, (images_np.shape[0], dim_x))
 
-      images = torch.from_numpy(images_np)
-      labels = torch.from_numpy(np.argmax(labels_np, axis = 1))
+      images = torch.from_numpy(images_np).to(device)
+      labels = torch.from_numpy(np.argmax(labels_np, axis = 1)).to(device)
 
       optimizer.zero_grad()
 
@@ -179,8 +178,14 @@ def train():
       loss.backward()
       optimizer.step()
 
+      del images
+      del labels
+
       if (i+1) % FLAGS.eval_freq == 0:
           loss_train[i // FLAGS.eval_freq] = loss.item()
+
+          images_cv = torch.from_numpy(images_cv_np).to(device)
+          labels_cv = torch.from_numpy(np.argmax(labels_cv_np, axis = 1)).to(device)
 
           with torch.no_grad():
               cnt = 0
@@ -194,9 +199,9 @@ def train():
                   if isinstance(module, nn.Linear):
                       grad_norms[cnt][i // FLAGS.eval_freq] = module.weight.grad.abs().sum().item()
                       cnt += 1
+              pred_cv = mlp(images_cv)
 
-          pred_cv = mlp(images_cv)
-          accuracy_cv[i // FLAGS.eval_freq] = accuracy(pred_cv, labels_cv)
+          accuracy_cv[i // FLAGS.eval_freq] = accuracy(pred_cv, labels_cv).item()
           loss_cv[i // FLAGS.eval_freq] = criterion(pred_cv, labels_cv.long()).item()
           print()
           print('cv_loss:', loss_cv[i // FLAGS.eval_freq])
@@ -204,6 +209,8 @@ def train():
           print('train_loss:', loss_train[i // FLAGS.eval_freq])
           scheduler.step(loss_cv[i // FLAGS.eval_freq])
 
+  images_test = torch.from_numpy(images_test_np)
+  labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
 
   pred_test = mlp(images_test)
   accuracy_test = accuracy(pred_test, labels_test)
