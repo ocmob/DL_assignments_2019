@@ -83,7 +83,7 @@ def train():
 
   criterion = nn.CrossEntropyLoss()
   #TODO: ADAM?
-  optimizer = optim.SGD(vgg.parameters(), FLAGS.learning_rate)
+  optimizer = optim.Adam(vgg.parameters())
 
   loss_train = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
   loss_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
@@ -95,7 +95,8 @@ def train():
   images_test = torch.from_numpy(images_test_np)
   labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
 
-  for i in range(0, FLAGS.max_steps):
+  #for i in range(0, FLAGS.max_steps):
+  for i in range(0, 50):
       print('iter', i+1, end='\r')
       images_np, labels_np = train.next_batch(FLAGS.batch_size) 
 
@@ -109,21 +110,38 @@ def train():
       loss.backward()
       optimizer.step()
 
-      if (i+1) % FLAGS.eval_freq == 0:
-          loss_train[i // FLAGS.eval_freq] = loss.item()
-          pred_test = vgg(images_test)
-          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
-          loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
-          print()
-          print('test_loss:', loss_test[i // FLAGS.eval_freq])
-          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
-          print('train_loss:', loss_train[i // FLAGS.eval_freq])
-  fig, ax = plt.subplots(1, 2)
-  ax[0].plot(loss_train, label='Loss, train')
-  ax[0].plot(loss_test, label='Loss, test')
-  ax[1].plot(accuracy_test, label='Accuracy, test')
-  fig.legend()
-  plt.show()
+      #if (i+1) % FLAGS.eval_freq == 0:
+      loss_train[i // FLAGS.eval_freq] = loss.item()
+      pred_test = vgg(images_test)
+      accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
+      loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
+      print()
+      print('test_loss:', loss_test[i // FLAGS.eval_freq])
+      print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+      print('train_loss:', loss_train[i // FLAGS.eval_freq])
+  fig, ax = plt.subplots(1, 2, figsize=(10,5))
+  fig.suptitle('Training curves for Pytorch Convnet')
+
+  ax[0].set_title('Loss')
+  ax[0].set_ylabel('Loss value')
+  ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+  ax[0].plot(loss_train, label='Train')
+  ax[0].plot(loss_test, label='Test')
+  ax[0].legend()
+
+  ax[1].set_title('Accuracy')
+  ax[1].set_ylabel('Accuracy value')
+  ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+  ax[1].plot(accuracy_test, label='Test')
+  ax[1].legend()
+  
+  import time
+
+  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, Negslope
+
+  fig_name = 'pt_conv_training_0000_{}_{}_{}_{}.jpg'.format(
+          FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, FLAGS.neg_slope)
+  plt.savefig(fig_name)
   ########################
   # END OF YOUR CODE    #
   #######################

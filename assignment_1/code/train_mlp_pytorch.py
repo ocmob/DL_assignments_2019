@@ -142,12 +142,29 @@ def train():
           print('test_loss:', loss_test[i // FLAGS.eval_freq])
           print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
           print('train_loss:', loss_train[i // FLAGS.eval_freq])
-  fig, ax = plt.subplots(1, 2)
-  ax[0].plot(loss_train, label='Loss, train')
-  ax[0].plot(loss_test, label='Loss, test')
-  ax[1].plot(accuracy_test, label='Accuracy, test')
-  fig.legend()
-  plt.show()
+  fig, ax = plt.subplots(1, 2, figsize=(10,5))
+  fig.suptitle('Training curves for Pytorch MLP')
+
+  ax[0].set_title('Loss')
+  ax[0].set_ylabel('Loss value')
+  ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+  ax[0].plot(loss_train, label='Train')
+  ax[0].plot(loss_test, label='Test')
+  ax[0].legend()
+
+  ax[1].set_title('Accuracy')
+  ax[1].set_ylabel('Accuracy value')
+  ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+  ax[1].plot(accuracy_test, label='Test')
+  ax[1].legend()
+  
+  import time
+
+  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, Negslope
+
+  fig_name = 'pt_mlp_training_0000_{}_{}_{}_{}.jpg'.format(
+          FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, FLAGS.neg_slope)
+  plt.savefig(fig_name)
 
   ########################
   # END OF YOUR CODE    #
