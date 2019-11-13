@@ -118,6 +118,16 @@ def train():
   images_test = torch.from_numpy(images_test_np)
   labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
 
+  ## Work on a branch - do not modify the original code (for now)
+  ## Plots of weights - should be relatively easy
+  ## Deep architectures - simple mod to a bash script
+  ## Different initializations - modify the constructor
+
+  ## Learning Rate Schedule ?
+  ## Early stopping ?
+  ## Modify to run on GPU
+
+
   for i in range(0, FLAGS.max_steps):
       print('iter', i+1, end='\r')
       images_np, labels_np = train.next_batch(FLAGS.batch_size) 
