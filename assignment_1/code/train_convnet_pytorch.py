@@ -29,6 +29,8 @@ DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
+MEM_DEBUG = False
+
 def accuracy(predictions, targets):
   """
   Computes the prediction accuracy, i.e. the average of correct predictions
@@ -50,7 +52,16 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  predictions = predictions.clone().cpu().detach()
+  targets = targets.clone().cpu().detach()
+  pred = predictions.numpy()
+
+  tg = np.zeros_like(pred)
+  i1 = np.arange(0, len(tg), 1)
+
+  tg[i1, targets.numpy()] += 1
+  i2 = np.argmax(pred, axis = 1)
+  accuracy = tg[i1, i2].sum()/tg.sum()
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -74,34 +85,40 @@ def train():
   #######################
   import matplotlib.pyplot as plt
 
+  if not torch.cuda.is_available():
+      print("WARNING: CUDA DEVICE IS NOT AVAILABLE, WILL TRAIN ON CPU")
+  device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
   data = cifar10_utils.get_cifar10(FLAGS.data_dir)
 
   train = data['train']
   test = data['test']
 
+  images_test_np = test.images
+  labels_test_np = test.labels
+
   vgg = ConvNet(3, 10)
+  vgg.to(device)
+
+  if MEM_DEBUG:
+      print("Memory after VGG loaded: Alloc: {} MB, Cached: {} MB".format(torch.cuda.memory_allocated(device)/1e6, torch.cuda.memory_cached(device)/1e6) )
 
   criterion = nn.CrossEntropyLoss()
-  #TODO: ADAM?
   optimizer = optim.Adam(vgg.parameters())
 
   loss_train = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
   loss_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
   accuracy_test = np.zeros((int(np.floor(FLAGS.max_steps/FLAGS.eval_freq), )))
 
-  images_test_np = test.images
-  labels_test_np = test.labels
-
-  images_test = torch.from_numpy(images_test_np)
-  labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
-
-  #for i in range(0, FLAGS.max_steps):
-  for i in range(0, 50):
+  for i in range(0, FLAGS.max_steps):
       print('iter', i+1, end='\r')
       images_np, labels_np = train.next_batch(FLAGS.batch_size) 
 
-      images = torch.from_numpy(images_np)
-      labels = torch.from_numpy(np.argmax(labels_np, axis = 1))
+      images = torch.from_numpy(images_np).to(device)
+      labels = torch.from_numpy(np.argmax(labels_np, axis = 1)).to(device)
+
+      if MEM_DEBUG:
+          print("\nMemory after train loaded: Alloc: {} MB, Cached: {} MB".format(torch.cuda.memory_allocated(device)/1e6, torch.cuda.memory_cached(device)/1e6) )
 
       optimizer.zero_grad()
 
@@ -110,15 +127,32 @@ def train():
       loss.backward()
       optimizer.step()
 
-      #if (i+1) % FLAGS.eval_freq == 0:
-      loss_train[i // FLAGS.eval_freq] = loss.item()
-      pred_test = vgg(images_test)
-      accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
-      loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
-      print()
-      print('test_loss:', loss_test[i // FLAGS.eval_freq])
-      print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
-      print('train_loss:', loss_train[i // FLAGS.eval_freq])
+      del images
+      del labels
+
+      if (i+1) % FLAGS.eval_freq == 0:
+          if MEM_DEBUG:
+              print("Memory entering the eval: Alloc: {} MB, Cached: {} MB".format(torch.cuda.memory_allocated(device)/1e6, torch.cuda.memory_cached(device)/1e6) )
+          loss_train[i // FLAGS.eval_freq] = loss.item()
+
+          images_test = torch.from_numpy(images_test_np).to(device)
+          labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1)).to(device)
+
+          if MEM_DEBUG:
+              print("Memory after test loaded: Alloc: {} MB Cached: {} MB".format(torch.cuda.memory_allocated(device)/1e6, torch.cuda.memory_cached(device)/1e6) )
+
+          vgg.eval()
+          with torch.no_grad():
+              pred_test = vgg(images_test)
+          vgg.train()
+
+          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test).item()
+          loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
+
+          print()
+          print('test_loss:', loss_test[i // FLAGS.eval_freq])
+          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+          print('train_loss:', loss_train[i // FLAGS.eval_freq])
   fig, ax = plt.subplots(1, 2, figsize=(10,5))
   fig.suptitle('Training curves for Pytorch Convnet')
 
@@ -137,10 +171,9 @@ def train():
   
   import time
 
-  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, Negslope
+  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, time
 
-  fig_name = 'pt_conv_training_0000_{}_{}_{}_{}.jpg'.format(
-          FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, FLAGS.neg_slope)
+  fig_name = 'pt_conv_training_0000_{}_{}_{}_{}.jpg'.format(FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, time.time())
   plt.savefig(fig_name)
   ########################
   # END OF YOUR CODE    #
