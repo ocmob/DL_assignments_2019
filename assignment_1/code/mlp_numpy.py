@@ -45,8 +45,6 @@ class MLP(object):
         no_u_previous = no_u
     self.modules.append(LinearModule(no_u_previous, n_classes))
     self.modules.append(SoftMaxModule())
-    self.modules[-2].params['weight'] = np.random.uniform(
-            0.5, 0.6, size = self.modules[-2].params['weight'].shape)
     ########################
     # END OF YOUR CODE    #
     #######################

@@ -1,4 +1,5 @@
 .DS_Store
 *trash
 *.out
+*.jpg
 */.DS_Store

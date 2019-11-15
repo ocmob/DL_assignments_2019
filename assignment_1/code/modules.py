@@ -33,7 +33,7 @@ class LinearModule(object):
     self.params['weight'] = np.random.normal(0, 0.0001, size=(out_features, in_features))
     self.params['bias'] = np.zeros((out_features,))
 
-    self.grads['weight'] = np.zeros((in_features, out_features)) # following numerator notation
+    self.grads['weight'] = np.zeros((in_features, out_features))
     self.grads['bias'] = np.zeros((out_features,))
     ########################
     # END OF YOUR CODE    #
@@ -228,13 +228,13 @@ class SoftMaxModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    i1 = np.arange(0, len(dout), 1) 
-    i2 = np.argmin(dout, axis=1) 
-    dx = self.out
-    dx[i1, i2] = dx[i1, i2] - 1
+    out_expand = np.zeros((self.out.shape[0], self.out.shape[1], self.out.shape[1]))
+    indices = np.arange(0, self.out.shape[1], 1)
+    out_expand[:, indices, indices] = self.out
+    i_sum = np.einsum('ij, ik->ijk', self.out, self.out)
+    dx = np.einsum('ij, ijk -> ik', dout, out_expand-i_sum)
     #print('Backward, softmax')
     #breakpoint()
-
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -271,7 +271,7 @@ class CrossEntropyModule(object):
     # END OF YOUR CODE    #
     #######################
 
-    return out.mean()
+    return out.sum()
 
   def backward(self, x, y):
     """
