@@ -163,6 +163,9 @@ def train():
   images_cv_np = np.reshape(images_cv_np, (images_test_np.shape[0], dim_x))
   images_test_np = np.reshape(images_test_np, (images_test_np.shape[0], dim_x))
 
+  images_cv = torch.from_numpy(images_cv_np).to(device)
+  labels_cv = torch.from_numpy(np.argmax(labels_cv_np, axis = 1)).to(device)
+
   for i in range(0, FLAGS.max_steps):
       print('iter', i+1, end='\r')
       images_np, labels_np = train.next_batch(FLAGS.batch_size) 
@@ -178,14 +181,8 @@ def train():
       loss.backward()
       optimizer.step()
 
-      del images
-      del labels
-
       if (i+1) % FLAGS.eval_freq == 0:
           loss_train[i // FLAGS.eval_freq] = loss.item()
-
-          images_cv = torch.from_numpy(images_cv_np).to(device)
-          labels_cv = torch.from_numpy(np.argmax(labels_cv_np, axis = 1)).to(device)
 
           with torch.no_grad():
               cnt = 0
@@ -209,8 +206,8 @@ def train():
           print('train_loss:', loss_train[i // FLAGS.eval_freq])
           scheduler.step(loss_cv[i // FLAGS.eval_freq])
 
-  images_test = torch.from_numpy(images_test_np)
-  labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
+  images_test = torch.from_numpy(images_test_np).to(device)
+  labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1)).to(device)
 
   pred_test = mlp(images_test)
   accuracy_test = accuracy(pred_test, labels_test)
@@ -233,8 +230,8 @@ def train():
   
   ## Lib, Nettype, Filetype, Init type, Steps, Batchsize, Eval_freq, Accuracy
 
-  fig_name = 'pt_mlp_training_{}_{}_{}_{}_{:.4f}.jpg'.format(FLAGS.init_type, FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, accuracy_test)
-  plt.savefig(fig_name)
+  fig_name = 'pt_mlp_training_{}_{}_{}_{}_{:.4f}.jpg'.format(FLAGS.init_type, FLAGS.optim_type, FLAGS.weight_decay, FLAGS.dnn_hidden_units, accuracy_test)
+  plt.savefig(FLAGS.res+fig_name)
 
   fig, ax = plt.subplots(1, 2, figsize=(12,6))
   fig.suptitle('Norms of weight and gradient tensors for Pytorch MLP.'.format(accuracy_test, FLAGS.dnn_hidden_units, init_name, opt_name, FLAGS.weight_decay))
@@ -251,8 +248,8 @@ def train():
   ax[1].set_ylabel('Norm')
   ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
   ax[1].legend()
-  fig_name = 'pt_mlp_norms_{}_{}_{}_{}_{:.4f}.jpg'.format(FLAGS.init_type, FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, accuracy_test)
-  plt.savefig(fig_name)
+  fig_name = 'pt_mlp_norms_{}_{}_{}_{}_{:.4f}.jpg'.format(FLAGS.init_type, FLAGS.optim_type, FLAGS.weight_decay, FLAGS.dnn_hidden_units, accuracy_test)
+  plt.savefig(FLAGS.res+fig_name)
   plt.show()
 
   ########################
@@ -296,12 +293,14 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   parser.add_argument('--neg_slope', type=float, default=NEG_SLOPE_DEFAULT,
                       help='Negative slope parameter for LeakyReLU')
-  parser.add_argument('--init_type', type=float, default=0,
+  parser.add_argument('--init_type', type=int, default=0,
                       help='Type of initialization for linear layers')
-  parser.add_argument('--optim_type', type=float, default=0,
+  parser.add_argument('--optim_type', type=int, default=0,
                       help='Type of optimizer')
   parser.add_argument('--weight_decay', type=float, default=0.1,
                       help='Amount of weight decay')
+  parser.add_argument('--res', type=str, default='./',
+                      help='')
   FLAGS, unparsed = parser.parse_known_args()
 
   main()
