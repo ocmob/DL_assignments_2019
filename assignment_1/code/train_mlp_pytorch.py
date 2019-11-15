@@ -30,6 +30,9 @@ DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
+PRINTS = True
+PLOTS = True
+
 def accuracy(predictions, targets):
   """
   Computes the prediction accuracy, i.e. the average of correct predictions
@@ -51,16 +54,12 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  predictions = predictions.clone().detach()
-  targets = targets.clone().detach()
-  pred = predictions.numpy()
+  predictions = predictions.clone().detach().numpy()
+  targets = targets.clone().detach().numpy()
 
-  tg = np.zeros_like(pred)
-  i1 = np.arange(0, len(tg), 1)
-
-  tg[i1, targets.numpy()] += 1
-  i2 = np.argmax(pred, axis = 1)
-  accuracy = tg[i1, i2].sum()/tg.sum()
+  i1 = np.arange(0, len(targets), 1)
+  i2 = np.argmax(predictions, axis = 1)
+  accuracy = targets[i1, i2].sum()/targets.sum()
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -119,7 +118,9 @@ def train():
   labels_test = torch.from_numpy(np.argmax(labels_test_np, axis = 1))
 
   for i in range(0, FLAGS.max_steps):
-      print('iter', i+1, end='\r')
+      if PRINTS:
+          print('iter', i+1, end='\r')
+
       images_np, labels_np = train.next_batch(FLAGS.batch_size) 
       images_np = np.reshape(images_np, (images_np.shape[0], dim_x))
 
@@ -136,36 +137,31 @@ def train():
       if (i+1) % FLAGS.eval_freq == 0:
           loss_train[i // FLAGS.eval_freq] = loss.item()
           pred_test = mlp(images_test)
-          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test)
+          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, F.one_hot(labels_test))
           loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
-          print()
-          print('test_loss:', loss_test[i // FLAGS.eval_freq])
-          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
-          print('train_loss:', loss_train[i // FLAGS.eval_freq])
-  fig, ax = plt.subplots(1, 2, figsize=(10,5))
-  fig.suptitle('Training curves for Pytorch MLP')
+          if PRINTS:
+              print()
+              print('test_loss:', loss_test[i // FLAGS.eval_freq])
+              print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+              print('train_loss:', loss_train[i // FLAGS.eval_freq])
+  if PLOTS:
+      fig, ax = plt.subplots(1, 2, figsize=(10,5))
+      fig.suptitle('Training curves for Pytorch MLP')
 
-  ax[0].set_title('Loss')
-  ax[0].set_ylabel('Loss value')
-  ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
-  ax[0].plot(loss_train, label='Train')
-  ax[0].plot(loss_test, label='Test')
-  ax[0].legend()
+      ax[0].set_title('Loss')
+      ax[0].set_ylabel('Loss value')
+      ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+      ax[0].plot(loss_train, label='Train')
+      ax[0].plot(loss_test, label='Test')
+      ax[0].legend()
 
-  ax[1].set_title('Accuracy')
-  ax[1].set_ylabel('Accuracy value')
-  ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
-  ax[1].plot(accuracy_test, label='Test')
-  ax[1].legend()
+      ax[1].set_title('Accuracy')
+      ax[1].set_ylabel('Accuracy value')
+      ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+      ax[1].plot(accuracy_test, label='Test')
+      ax[1].legend()
+      plt.show()
   
-  import time
-
-  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, Negslope
-
-  fig_name = 'pt_mlp_training_0000_{}_{}_{}_{}.jpg'.format(
-          FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, FLAGS.neg_slope)
-  plt.savefig(fig_name)
-
   ########################
   # END OF YOUR CODE    #
   #######################

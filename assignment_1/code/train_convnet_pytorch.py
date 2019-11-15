@@ -29,6 +29,8 @@ DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
+PRINTS = True
+PLOTS = False
 MEM_DEBUG = False
 
 def accuracy(predictions, targets):
@@ -52,16 +54,12 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  predictions = predictions.clone().cpu().detach()
-  targets = targets.clone().cpu().detach()
-  pred = predictions.numpy()
+  predictions = predictions.clone().cpu().detach().numpy()
+  targets = targets.clone().cpu().detach().numpy()
 
-  tg = np.zeros_like(pred)
-  i1 = np.arange(0, len(tg), 1)
-
-  tg[i1, targets.numpy()] += 1
-  i2 = np.argmax(pred, axis = 1)
-  accuracy = tg[i1, i2].sum()/tg.sum()
+  i1 = np.arange(0, len(targets), 1)
+  i2 = np.argmax(predictions, axis = 1)
+  accuracy = targets[i1, i2].sum()/targets.sum()
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -146,35 +144,35 @@ def train():
               pred_test = vgg(images_test)
           vgg.train()
 
-          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, labels_test).item()
+          accuracy_test[i // FLAGS.eval_freq] = accuracy(pred_test, F.one_hot(labels_test)).item()
           loss_test[i // FLAGS.eval_freq] = criterion(pred_test, labels_test.long()).item()
 
-          print()
-          print('test_loss:', loss_test[i // FLAGS.eval_freq])
-          print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
-          print('train_loss:', loss_train[i // FLAGS.eval_freq])
-  fig, ax = plt.subplots(1, 2, figsize=(10,5))
-  fig.suptitle('Training curves for Pytorch Convnet')
+          if PRINTS:
+              print()
+              print('test_loss:', loss_test[i // FLAGS.eval_freq])
+              print('test_accuracy:', accuracy_test[i // FLAGS.eval_freq])
+              print('train_loss:', loss_train[i // FLAGS.eval_freq])
+  if PLOTS:
+      fig, ax = plt.subplots(1, 2, figsize=(10,5))
+      fig.suptitle('Training curves for Pytorch Convnet')
 
-  ax[0].set_title('Loss')
-  ax[0].set_ylabel('Loss value')
-  ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
-  ax[0].plot(loss_train, label='Train')
-  ax[0].plot(loss_test, label='Test')
-  ax[0].legend()
+      ax[0].set_title('Loss')
+      ax[0].set_ylabel('Loss value')
+      ax[0].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+      ax[0].plot(loss_train, label='Train')
+      ax[0].plot(loss_test, label='Test')
+      ax[0].legend()
 
-  ax[1].set_title('Accuracy')
-  ax[1].set_ylabel('Accuracy value')
-  ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
-  ax[1].plot(accuracy_test, label='Test')
-  ax[1].legend()
-  
-  import time
+      ax[1].set_title('Accuracy')
+      ax[1].set_ylabel('Accuracy value')
+      ax[1].set_xlabel('No of batches seen x{}'.format(FLAGS.eval_freq))
+      ax[1].plot(accuracy_test, label='Test')
+      ax[1].legend()
+      
+      import time
 
-  ## Lib, Nettype, Filetype, Enchancements, Steps, Batchsize, Eval_freq, time
-
-  fig_name = 'pt_conv_training_0000_{}_{}_{}_{}.jpg'.format(FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, time.time())
-  plt.savefig(fig_name)
+      fig_name = 'pt_conv_training_{}_{}_{}_{}.jpg'.format(FLAGS.max_steps, FLAGS.batch_size, FLAGS.eval_freq, time.time())
+      plt.savefig(fig_name)
   ########################
   # END OF YOUR CODE    #
   #######################
