@@ -29,7 +29,7 @@ DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
-PRINTS = True
+PRINTS = False
 PLOTS = False
 MEM_DEBUG = False
 

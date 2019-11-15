@@ -30,8 +30,8 @@ DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
-PRINTS = True
-PLOTS = True
+PRINTS = False
+PLOTS = False
 
 def accuracy(predictions, targets):
   """
