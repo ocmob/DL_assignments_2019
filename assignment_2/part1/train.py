@@ -74,7 +74,7 @@ def train(config):
 
     accuracy_avg = 0
     iters = 10
-    for i in range(iters)
+    for i in range(iters):
         # Setup the loss and optimizer
         criterion = nn.CrossEntropyLoss()  
         optimizer = optim.SGD(model.parameters(), config.learning_rate)
@@ -116,7 +116,7 @@ def train(config):
             t2 = time.time()
             examples_per_second = config.batch_size/float(t2-t1)
 
-            if step % 10 == 0:
+            #if step % 10 == 0:
 
                 #print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
                 #      "Accuracy = {:.2f}, Loss = {:.3f}".format(

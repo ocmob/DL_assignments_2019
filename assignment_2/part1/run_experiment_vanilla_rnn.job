@@ -20,7 +20,7 @@ cp -r /home/lgpu0296/DL_assignments_2019/assignment_1/code/cifar10 ${TMPDIR}/cif
 PALINDROME_LENGTH=($(seq 5 1 5))
 for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
-	printf "$PALINDROME_LENGTH,"
-	python3 train.py --input_length = $LENGTH
+	printf "$LENGTH,"
+	python3 train.py --input_length $LENGTH
 	echo ""
 done
