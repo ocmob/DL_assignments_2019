@@ -72,62 +72,66 @@ def train(config):
     dataset = PalindromeDataset(config.input_length+1)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
-    # Setup the loss and optimizer
-    criterion = nn.CrossEntropyLoss()  
-    optimizer = optim.SGD(model.parameters(), config.learning_rate)
+    accuracy_avg = 0
+    iters = 10
+    for i in range(iters)
+        # Setup the loss and optimizer
+        criterion = nn.CrossEntropyLoss()  
+        optimizer = optim.SGD(model.parameters(), config.learning_rate)
 
-    for step, (batch_inputs, batch_targets) in enumerate(data_loader):
+        for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
-        # Only for time measurement of step through network
-        t1 = time.time()
+            # Only for time measurement of step through network
+            t1 = time.time()
 
-        batch_inputs.to(device)
-        batch_targets.to(device)
+            batch_inputs.to(device)
+            batch_targets.to(device)
 
-        optimizer.zero_grad()
-        pred = model.forward(batch_inputs)
+            optimizer.zero_grad()
+            pred = model.forward(batch_inputs)
 
-        ############################################################################
-        # QUESTION: what happens here and why?
-        # Gradient clipping is performed. In deep computational graphs the 
-        # parameter gradient could grow very large due to a large number of 
-        # repeatedly applying the same operation. If this happens an SGD 
-        # update will take a bigger-than-usual step, possibly ending up in a 
-        # region where loss function already begins to curve upwards again.
-        # To alleviate this behaviour we perform gradient clipping, which
-        # restricts the maximum possible value of gradient and thus the max step
-        # we can take. This will make convergence easier and the optimization 
-        # process will be better-behaved than without gradient clipping
-        ############################################################################
-        # Clipping moved to AFTER the backward pass
-        ############################################################################
+            ############################################################################
+            # QUESTION: what happens here and why?
+            # Gradient clipping is performed. In deep computational graphs the 
+            # parameter gradient could grow very large due to a large number of 
+            # repeatedly applying the same operation. If this happens an SGD 
+            # update will take a bigger-than-usual step, possibly ending up in a 
+            # region where loss function already begins to curve upwards again.
+            # To alleviate this behaviour we perform gradient clipping, which
+            # restricts the maximum possible value of gradient and thus the max step
+            # we can take. This will make convergence easier and the optimization 
+            # process will be better-behaved than without gradient clipping
+            ############################################################################
+            # Clipping moved to AFTER the backward pass
+            ############################################################################
 
-        loss = criterion(pred, batch_targets)
-        accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10))  # fixme
+            loss = criterion(pred, batch_targets)
+            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10)) 
 
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
-        optimizer.step()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
+            optimizer.step()
 
-        # Just for time measurement
-        t2 = time.time()
-        examples_per_second = config.batch_size/float(t2-t1)
+            # Just for time measurement
+            t2 = time.time()
+            examples_per_second = config.batch_size/float(t2-t1)
 
-        if step % 10 == 0:
+            if step % 10 == 0:
 
-            print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-                  "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                    datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-                    config.train_steps, config.batch_size, examples_per_second,
-                    accuracy, loss
-            ))
+                #print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                #      "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                #        datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                #        config.train_steps, config.batch_size, examples_per_second,
+                #        accuracy, loss
+                #))
 
-        if step == config.train_steps:
-            # If you receive a PyTorch data-loader error, check this bug report:
-            # https://github.com/pytorch/pytorch/pull/9655
-            break
+            if step == config.train_steps:
+                # If you receive a PyTorch data-loader error, check this bug report:
+                # https://github.com/pytorch/pytorch/pull/9655
+                break
+        accuracy_avg += accuracy 
 
-    print('Done training.')
+    print(accuracy_avg/iters, end='')
 
 
  ################################################################################
