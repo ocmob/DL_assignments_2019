@@ -45,14 +45,13 @@ from lstm import LSTM
 
 def acc(predictions, targets):
 
-  predictions = predictions.clone().cpu().detach().numpy()
-  targets = targets.clone().cpu().detach().numpy()
+  with torch.no_grad():
+      pred_max = predictions - predictions.max(dim=1).values[:, None]
+      pred_soft = F.softmax(pred_max, dim=1)
 
-  i1 = np.arange(0, len(targets), 1)
-  i2 = np.argmax(predictions, axis = 1)
-  accuracy = targets[i1, i2].sum()/targets.sum()
+      accuracy = (pred_soft*targets).sum()/targets.sum()
 
-  return accuracy
+  return accuracy.detach().cpu().item()
 
 def train(config):
 
@@ -67,7 +66,7 @@ def train(config):
 
     accuracy_avg = 0
     iters = 10
-    for i in range(iters)
+    for i in range(iters):
         # Initialize the model that we are going to use
         if config.model_type == 'RNN':
             model = VanillaRNN(config.input_length, config.input_dim,
@@ -106,7 +105,7 @@ def train(config):
             ############################################################################
 
             loss = criterion(pred, batch_targets)
-            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10)) 
+            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10).float()) 
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
@@ -116,14 +115,14 @@ def train(config):
             t2 = time.time()
             examples_per_second = config.batch_size/float(t2-t1)
 
-            #if step % 10 == 0:
+            if step % 10 == 0:
 
-                #print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-                #      "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                #        datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-                #        config.train_steps, config.batch_size, examples_per_second,
-                #        accuracy, loss
-                #))
+                print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                      "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                        config.train_steps, config.batch_size, examples_per_second,
+                        accuracy, loss
+                ))
 
             if step == config.train_steps:
                 # If you receive a PyTorch data-loader error, check this bug report:
