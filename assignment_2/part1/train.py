@@ -26,14 +26,33 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from part1.dataset import PalindromeDataset
-from part1.vanilla_rnn import VanillaRNN
-from part1.lstm import LSTM
+# TODO WTF?
+#from part1.dataset import PalindromeDataset
+#from part1.vanilla_rnn import VanillaRNN
+#from part1.lstm import LSTM
+
+import torch.optim as optim
+import torch.nn as nn
+import torch.nn.functional as F
+from dataset import PalindromeDataset
+from vanilla_rnn import VanillaRNN
+from lstm import LSTM
 
 # You may want to look into tensorboard for logging
 # from torch.utils.tensorboard import SummaryWriter
 
 ################################################################################
+
+def acc(predictions, targets):
+
+  predictions = predictions.clone().cpu().detach().numpy()
+  targets = targets.clone().cpu().detach().numpy()
+
+  i1 = np.arange(0, len(targets), 1)
+  i2 = np.argmax(predictions, axis = 1)
+  accuracy = targets[i1, i2].sum()/targets.sum()
+
+  return accuracy
 
 def train(config):
 
@@ -43,33 +62,52 @@ def train(config):
     device = torch.device(config.device)
 
     # Initialize the model that we are going to use
-    model = None  # fixme
+    if config.model_type == 'RNN':
+        model = VanillaRNN(config.input_length, config.input_dim,
+                config.num_hidden, config.num_classes, device)
+    else:
+        raise NotImplementedError
 
     # Initialize the dataset and data loader (note the +1)
     dataset = PalindromeDataset(config.input_length+1)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
     # Setup the loss and optimizer
-    criterion = None  # fixme
-    optimizer = None  # fixme
+    criterion = nn.CrossEntropyLoss()  
+    optimizer = optim.SGD(model.parameters(), config.learning_rate)
 
     for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
         # Only for time measurement of step through network
         t1 = time.time()
 
-        # Add more code here ...
+        batch_inputs.to(device)
+        batch_targets.to(device)
+
+        optimizer.zero_grad()
+        pred = model.forward(batch_inputs)
 
         ############################################################################
         # QUESTION: what happens here and why?
+        # Gradient clipping is performed. In deep computational graphs the 
+        # parameter gradient could grow very large due to a large number of 
+        # repeatedly applying the same operation. If this happens an SGD 
+        # update will take a bigger-than-usual step, possibly ending up in a 
+        # region where loss function already begins to curve upwards again.
+        # To alleviate this behaviour we perform gradient clipping, which
+        # restricts the maximum possible value of gradient and thus the max step
+        # we can take. This will make convergence easier and the optimization 
+        # process will be better-behaved than without gradient clipping
         ############################################################################
-        torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=config.max_norm)
+        # Clipping moved to AFTER the backward pass
         ############################################################################
 
-        # Add more code here ...
+        loss = criterion(pred, batch_targets)
+        accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10))  # fixme
 
-        loss = np.inf   # fixme
-        accuracy = 0.0  # fixme
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
+        optimizer.step()
 
         # Just for time measurement
         t2 = time.time()
