@@ -61,20 +61,20 @@ def train(config):
     # Initialize the device which to run the model on
     device = torch.device(config.device)
 
-    # Initialize the model that we are going to use
-    if config.model_type == 'RNN':
-        model = VanillaRNN(config.input_length, config.input_dim,
-                config.num_hidden, config.num_classes, device)
-    else:
-        raise NotImplementedError
-
     # Initialize the dataset and data loader (note the +1)
     dataset = PalindromeDataset(config.input_length+1)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
     accuracy_avg = 0
     iters = 10
-    for i in range(iters):
+    for i in range(iters)
+        # Initialize the model that we are going to use
+        if config.model_type == 'RNN':
+            model = VanillaRNN(config.input_length, config.input_dim,
+                    config.num_hidden, config.num_classes, device)
+        else:
+            raise NotImplementedError
+
         # Setup the loss and optimizer
         criterion = nn.CrossEntropyLoss()  
         optimizer = optim.SGD(model.parameters(), config.learning_rate)
