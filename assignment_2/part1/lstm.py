@@ -25,9 +25,11 @@ import torch.nn as nn
 
 class LSTM(nn.Module):
 
-    def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu'):
+    def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu', save_grads=False):
         super(LSTM, self).__init__()
         self.device = device
+
+        self.save_grads = save_grads
 
         # new activations come here
         self.wgx = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
@@ -48,7 +50,7 @@ class LSTM(nn.Module):
         nn.init.xavier_uniform_(self.wgx)
         self.wfh = nn.Parameter(torch.zeros(num_hidden, num_hidden, device=device))
         nn.init.xavier_uniform_(self.wgh)
-        self.bf = nn.Parameter(torch.zeros(num_hidden, device=device))
+        self.bf = nn.Parameter(2*torch.ones(num_hidden, device=device))
         
         # output gate
         self.wox = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
@@ -68,7 +70,12 @@ class LSTM(nn.Module):
 
         hprev = torch.zeros(x.shape[0], self.wih.shape[0], device=self.device)
         cprev = torch.zeros(x.shape[0], self.wih.shape[0], device=self.device)
+
+        if self.save_grads:
+            self.grad_over_time = []
+
         for char_batch in x.T:
+
             char_batch = char_batch[:, None]
             g = torch.tanh(char_batch @ self.wgx.T + hprev @ self.wgh + self.bg)
             i = torch.sigmoid(char_batch @ self.wix.T + hprev @ self.wih + self.bi)
@@ -76,6 +83,12 @@ class LSTM(nn.Module):
             o = torch.sigmoid(char_batch @ self.wox.T + hprev @ self.woh + self.bo)
             cprev = g * i + cprev * f
             hprev = torch.tanh(cprev) * o
+
+            if self.save_grads:
+                self.grad_over_time.append(hprev)
+                hprev.retain_grad()
+                hprev = hprev.clone()
+
         p = hprev @ self.wph.T + self.bp
 
         return p

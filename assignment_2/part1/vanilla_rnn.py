@@ -26,11 +26,12 @@ import torch.nn.functional as F
 
 class VanillaRNN(nn.Module):
 
-    def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu'):
+    def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu', save_grads=False):
         super(VanillaRNN, self).__init__()
 
         self.device = device
         self.seq_length = seq_length
+        self.save_grads = save_grads
 
         # Initialization here ...
         self.wph = nn.Parameter(torch.zeros(num_classes, num_hidden, device=device))
@@ -46,8 +47,16 @@ class VanillaRNN(nn.Module):
     def forward(self, x):
         # Implementation here ...
         hprev = torch.zeros(x.shape[0], self.whh.shape[0], device=self.device)
+
+        if self.save_grads:
+            self.grad_over_time = []
+
         for char_batch in x.T:
             hprev = torch.tanh(char_batch[:, None] @ self.whx.T + hprev @ self.whh.T + self.bh)
+            if self.save_grads:
+                self.grad_over_time.append(hprev)
+                hprev.retain_grad()
+                hprev = hprev.clone()
         p = hprev @ self.wph.T + self.bp
 
         return p
