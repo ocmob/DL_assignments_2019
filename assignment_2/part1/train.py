@@ -74,6 +74,8 @@ def train(config):
         else:
             raise NotImplementedError
 
+        model.to(device)
+
         # Setup the loss and optimizer
         criterion = nn.CrossEntropyLoss()  
         optimizer = optim.SGD(model.parameters(), config.learning_rate)
@@ -83,8 +85,8 @@ def train(config):
             # Only for time measurement of step through network
             t1 = time.time()
 
-            batch_inputs.to(device)
-            batch_targets.to(device)
+            batch_inputs = batch_inputs.to(device)
+            batch_targets = batch_targets.to(device)
 
             optimizer.zero_grad()
             pred = model.forward(batch_inputs)
@@ -115,14 +117,14 @@ def train(config):
             t2 = time.time()
             examples_per_second = config.batch_size/float(t2-t1)
 
-            if step % 10 == 0:
+            #if step % 10 == 0:
 
-                print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-                      "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                        datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-                        config.train_steps, config.batch_size, examples_per_second,
-                        accuracy, loss
-                ))
+            #    print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+            #          "Accuracy = {:.2f}, Loss = {:.3f}".format(
+            #            datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+            #            config.train_steps, config.batch_size, examples_per_second,
+            #            accuracy, loss
+            #    ))
 
             if step == config.train_steps:
                 # If you receive a PyTorch data-loader error, check this bug report:

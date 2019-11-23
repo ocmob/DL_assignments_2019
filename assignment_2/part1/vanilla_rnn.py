@@ -29,24 +29,25 @@ class VanillaRNN(nn.Module):
     def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu'):
         super(VanillaRNN, self).__init__()
 
+        self.device = device
         self.seq_length = seq_length
 
         # Initialization here ...
-        self.wph = nn.Parameter(torch.zeros(num_classes, num_hidden)).to(device)
+        self.wph = nn.Parameter(torch.zeros(num_classes, num_hidden, device=device))
         nn.init.xavier_uniform_(self.wph)
-        self.whh = nn.Parameter(torch.zeros(num_hidden, num_hidden)).to(device)
+        self.whh = nn.Parameter(torch.zeros(num_hidden, num_hidden, device=device))
         nn.init.xavier_uniform_(self.whh)
-        self.whx = nn.Parameter(torch.zeros(num_hidden, input_dim)).to(device)
+        self.whx = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
         nn.init.xavier_uniform_(self.whx)
 
-        self.bh = nn.Parameter(torch.zeros(num_hidden)).to(device)
-        self.bp = nn.Parameter(torch.zeros(num_classes)).to(device)
+        self.bh = nn.Parameter(torch.zeros(num_hidden, device=device))
+        self.bp = nn.Parameter(torch.zeros(num_classes, device=device))
 
     def forward(self, x):
         # Implementation here ...
-        hprev = torch.zeros(x.shape[0], self.whh.shape[0])
+        hprev = torch.zeros(x.shape[0], self.whh.shape[0], device=self.device)
         for char_batch in x.T:
-            hprev = F.tanh(char_batch[:, None] @ self.whx.T + hprev @ self.whh.T + self.bh)
+            hprev = torch.tanh(char_batch[:, None] @ self.whx.T + hprev @ self.whh.T + self.bh)
         p = hprev @ self.wph.T + self.bp
 
         return p
