@@ -66,7 +66,7 @@ def train(config):
         outfile = open(config.train_log, 'w')
 
     accuracy_avg = 0
-    iters = 10
+    iters = 1
 
     for i in range(iters):
         # Initialize the model that we are going to use
@@ -143,6 +143,8 @@ def train(config):
                 break
 
         test_inputs, test_targets = next(iter(test_loader))
+        test_inputs = test_inputs.to(device)
+        test_targets = test_targets.to(device)
 
         with torch.no_grad():
             pred = model.forward(test_inputs)

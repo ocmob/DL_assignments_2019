@@ -3,7 +3,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=3
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=3:00:00
+#SBATCH --time=6:00:00
 #SBATCH --mem=60000M
 #SBATCH --partition=gpu_shared_course
 #SBATCH --gres=gpu:1
@@ -17,12 +17,11 @@ conda activate dl
 
 mkdir $TMPDIR/results_kurbanski
 
-#PALINDROME_LENGTH=($(seq 5 1 15))
-PALINDROME_LENGTH=($(seq 5 1 5))
+PALINDROME_LENGTH=($(seq 10 1 15))
 for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
 	printf "$LENGTH,"
-	python train.py --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	python train.py --model_type LSTM --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
 	echo ""
 done
 
