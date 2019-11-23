@@ -25,41 +25,61 @@ import argparse
 import numpy as np
 
 import torch
+import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from part2.dataset import TextDataset
-from part2.model import TextGenerationModel
+#from part2.dataset import TextDataset
+#from part2.model import TextGenerationModel
+from dataset import TextDataset
+from model import TextGenerationModel
 
 ################################################################################
+
+def acc(predictions, targets):
+
+  with torch.no_grad():
+      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=10).float() * targets).sum()/targets.sum()
+
+  return accuracy.detach().cpu().item()
 
 def train(config):
 
     # Initialize the device which to run the model on
     device = torch.device(config.device)
 
-    # Initialize the model that we are going to use
-    model = TextGenerationModel( ... )  # fixme
-
     # Initialize the dataset and data loader (note the +1)
-    dataset = TextDataset( ... )  # fixme
+    dataset = TextDataset(config.txt_file, config.seq_length)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
+    # Initialize the model that we are going to use
+    model = TextGenerationModel(config.batch_size, config.seq_length,
+            dataset.vocab_size, config.lstm_num_hidden, config.lstm_num_layers,
+            device)
+
     # Setup the loss and optimizer
-    criterion = None  # fixme
-    optimizer = None  # fixme
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.RMSprop(model.parameters(), config.learning_rate)
 
     for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
         # Only for time measurement of step through network
         t1 = time.time()
 
-        #######################################################
-        # Add more code here ...
-        #######################################################
+        batch_inputs = batch_inputs.to(device)
+        batch_targets = batch_targets.to(device)
 
-        loss = np.inf   # fixme
-        accuracy = 0.0  # fixme
+        optimizer.zero_grad()
+
+        pred = model.forward(batch_inputs)
+
+        breakpoint()
+
+        loss = criterion(pred, batch_targets)
+        accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10).float()) 
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
+        optimizer.step()
 
         # Just for time measurement
         t2 = time.time()
@@ -116,6 +136,9 @@ if __name__ == "__main__":
     parser.add_argument('--summary_path', type=str, default="./summaries/", help='Output path for summaries')
     parser.add_argument('--print_every', type=int, default=5, help='How often to print training progress')
     parser.add_argument('--sample_every', type=int, default=100, help='How often to sample from the model')
+
+    # TODO I ADDED
+    parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
 
     config = parser.parse_args()
 

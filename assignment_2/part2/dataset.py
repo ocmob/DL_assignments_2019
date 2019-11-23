@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 import numpy as np
 import torch.utils.data as data
+import torch
 
 
 class TextDataset(data.Dataset):

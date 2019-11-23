@@ -26,8 +26,23 @@ class TextGenerationModel(nn.Module):
                  lstm_num_hidden=256, lstm_num_layers=2, device='cuda:0'):
 
         super(TextGenerationModel, self).__init__()
-        # Initialization here...
+
+        self.lstm = nn.LSTM(input_size = 1,
+                hidden_size = lstm_num_hidden,
+                num_layers = lstm_num_layers).to(device)
+
+        self.module_list = nn.ModuleList()
+        for i in range(seq_length):
+            self.module_list.append(nn.Linear(lstm_num_hidden, vocabulary_size).to(device))
 
     def forward(self, x):
-        # Implementation here...
-        pass
+
+        out_array = []
+
+        x = x.T[:,:, None].float()
+        lstmout, _ = self.lstm(x)
+        for i, tensor in enumerate(lstmout):
+            out_array.append(self.module_list[i](tensor))
+            breakpoint()
+
+        return out_array
