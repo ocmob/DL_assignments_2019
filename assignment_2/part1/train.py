@@ -140,6 +140,8 @@ def train(config):
                 # If you receive a PyTorch data-loader error, check this bug report:
                 # https://github.com/pytorch/pytorch/pull/9655
                 break
+        #test_loader = DataLoader(dataset, 10000, num_workers=1)
+        #test_inputs, test_targets = data_loader.next()
         accuracy_avg += accuracy 
 
     print(accuracy_avg/iters, end='')
