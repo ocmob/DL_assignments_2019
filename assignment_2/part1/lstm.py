@@ -27,8 +27,55 @@ class LSTM(nn.Module):
 
     def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu'):
         super(LSTM, self).__init__()
-        # Initialization here ...
+        self.device = device
+
+        # new activations come here
+        self.wgx = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
+        nn.init.xavier_uniform_(self.wgx)
+        self.wgh = nn.Parameter(torch.zeros(num_hidden, num_hidden, device=device))
+        nn.init.xavier_uniform_(self.wgh)
+        self.bg = nn.Parameter(torch.zeros(num_hidden, device=device))
+
+        # gate for new activations
+        self.wix = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
+        nn.init.xavier_uniform_(self.wgx)
+        self.wih = nn.Parameter(torch.zeros(num_hidden, num_hidden, device=device))
+        nn.init.xavier_uniform_(self.wgh)
+        self.bi = nn.Parameter(torch.zeros(num_hidden, device=device))
+
+        # gate for hidden state
+        self.wfx = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
+        nn.init.xavier_uniform_(self.wgx)
+        self.wfh = nn.Parameter(torch.zeros(num_hidden, num_hidden, device=device))
+        nn.init.xavier_uniform_(self.wgh)
+        self.bf = nn.Parameter(torch.zeros(num_hidden, device=device))
+        
+        # output gate
+        self.wox = nn.Parameter(torch.zeros(num_hidden, input_dim, device=device))
+        nn.init.xavier_uniform_(self.wgx)
+        self.woh = nn.Parameter(torch.zeros(num_hidden, num_hidden, device=device))
+        nn.init.xavier_uniform_(self.wgh)
+        self.bo = nn.Parameter(torch.zeros(num_hidden, device=device))
+
+        # output layer and to softmax
+        self.wph = nn.Parameter(torch.zeros(num_classes, num_hidden, device=device))
+        nn.init.xavier_uniform_(self.wph)
+        self.bp = nn.Parameter(torch.zeros(num_classes, device=device))
+
+
 
     def forward(self, x):
-        # Implementation here ...
-        pass
+
+        hprev = torch.zeros(x.shape[0], self.wih.shape[0], device=self.device)
+        cprev = torch.zeros(x.shape[0], self.wih.shape[0], device=self.device)
+        for char_batch in x.T:
+            char_batch = char_batch[:, None]
+            g = torch.tanh(char_batch @ self.wgx.T + hprev @ self.wgh + self.bg)
+            i = torch.sigmoid(char_batch @ self.wix.T + hprev @ self.wih + self.bi)
+            f = torch.sigmoid(char_batch @ self.wfx.T + hprev @ self.wfh + self.bf)
+            o = torch.sigmoid(char_batch @ self.wox.T + hprev @ self.woh + self.bo)
+            cprev = g * i + cprev * f
+            hprev = torch.tanh(cprev) * o
+        p = hprev @ self.wph.T + self.bp
+
+        return p

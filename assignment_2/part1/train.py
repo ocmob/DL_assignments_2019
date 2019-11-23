@@ -73,14 +73,16 @@ def train(config):
         if config.model_type == 'RNN':
             model = VanillaRNN(config.input_length, config.input_dim,
                     config.num_hidden, config.num_classes, device)
+            optimizer = optim.SGD(model.parameters(), config.learning_rate)
         else:
-            raise NotImplementedError
+            model = LSTM(config.input_length, config.input_dim,
+                    config.num_hidden, config.num_classes, device)
+            optimizer = optim.RMSprop(model.parameters(), config.learning_rate)
 
         model.to(device)
 
         # Setup the loss and optimizer
         criterion = nn.CrossEntropyLoss()  
-        optimizer = optim.SGD(model.parameters(), config.learning_rate)
 
         for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
