@@ -64,6 +64,9 @@ def train(config):
     dataset = PalindromeDataset(config.input_length+1)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
 
+    if config.train_log != "STDOUT":
+        outfile = open(config.train_log, 'w')
+
     accuracy_avg = 0
     iters = 10
     for i in range(iters):
@@ -117,14 +120,21 @@ def train(config):
             t2 = time.time()
             examples_per_second = config.batch_size/float(t2-t1)
 
-            #if step % 10 == 0:
-
-            #    print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-            #          "Accuracy = {:.2f}, Loss = {:.3f}".format(
-            #            datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-            #            config.train_steps, config.batch_size, examples_per_second,
-            #            accuracy, loss
-            #    ))
+            if step % 10 == 0:
+                if config.train_log != "STDOUT":
+                    outfile.write("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                          "Accuracy = {:.2f}, Loss = {:.3f}\n".format(
+                            datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                            config.train_steps, config.batch_size, examples_per_second,
+                            accuracy, loss
+                    ))
+                else:
+                    print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                          "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                            datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                            config.train_steps, config.batch_size, examples_per_second,
+                            accuracy, loss
+                    ))
 
             if step == config.train_steps:
                 # If you receive a PyTorch data-loader error, check this bug report:
@@ -154,6 +164,10 @@ if __name__ == "__main__":
     parser.add_argument('--train_steps', type=int, default=10000, help='Number of training steps')
     parser.add_argument('--max_norm', type=float, default=10.0)
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
+
+    # TODO DELETE ME
+    import time
+    parser.add_argument('--train_log', type=str, default="STDOUT", help="Output file name")
 
     config = parser.parse_args()
 
