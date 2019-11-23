@@ -46,10 +46,7 @@ from lstm import LSTM
 def acc(predictions, targets):
 
   with torch.no_grad():
-      pred_max = predictions - predictions.max(dim=1).values[:, None]
-      pred_soft = F.softmax(pred_max, dim=1)
-
-      accuracy = (pred_soft*targets).sum()/targets.sum()
+      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=10).float() * targets).sum()/targets.sum()
 
   return accuracy.detach().cpu().item()
 
@@ -63,12 +60,14 @@ def train(config):
     # Initialize the dataset and data loader (note the +1)
     dataset = PalindromeDataset(config.input_length+1)
     data_loader = DataLoader(dataset, config.batch_size, num_workers=1)
+    test_loader = DataLoader(dataset, 10000, num_workers=1)
 
     if config.train_log != "STDOUT":
         outfile = open(config.train_log, 'w')
 
     accuracy_avg = 0
     iters = 10
+
     for i in range(iters):
         # Initialize the model that we are going to use
         if config.model_type == 'RNN':
@@ -140,9 +139,16 @@ def train(config):
                 # If you receive a PyTorch data-loader error, check this bug report:
                 # https://github.com/pytorch/pytorch/pull/9655
                 break
-        #test_loader = DataLoader(dataset, 10000, num_workers=1)
-        #test_inputs, test_targets = data_loader.next()
+
+        test_inputs, test_targets = next(iter(test_loader))
+
+        with torch.no_grad():
+            pred = model.forward(test_inputs)
+            loss = criterion(pred, test_targets)
+
+        accuracy = acc(pred, F.one_hot(test_targets, num_classes=10).float()) 
         accuracy_avg += accuracy 
+
 
     print(accuracy_avg/iters, end='')
 
