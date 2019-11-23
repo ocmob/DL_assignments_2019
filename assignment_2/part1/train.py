@@ -46,7 +46,7 @@ from lstm import LSTM
 def acc(predictions, targets):
 
   with torch.no_grad():
-      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=10).float() * targets).sum()/targets.sum()
+      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=config.num_classes).float() * targets).sum()/targets.sum()
 
   return accuracy.detach().cpu().item()
 
@@ -111,7 +111,7 @@ def train(config):
             ############################################################################
 
             loss = criterion(pred, batch_targets)
-            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10).float()) 
+            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=config.num_classes).float()) 
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
@@ -148,7 +148,7 @@ def train(config):
             pred = model.forward(test_inputs)
             loss = criterion(pred, test_targets)
 
-        accuracy = acc(pred, F.one_hot(test_targets, num_classes=10).float()) 
+        accuracy = acc(pred, F.one_hot(test_targets, num_classes=config.num_classes).float()) 
         accuracy_avg += accuracy 
 
 

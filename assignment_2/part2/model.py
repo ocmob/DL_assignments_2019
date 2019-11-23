@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import torch.nn as nn
+import torch
 
 
 class TextGenerationModel(nn.Module):
@@ -37,12 +38,12 @@ class TextGenerationModel(nn.Module):
 
     def forward(self, x):
 
-        out_array = []
-
         x = x.T[:,:, None].float()
         lstmout, _ = self.lstm(x)
         for i, tensor in enumerate(lstmout):
-            out_array.append(self.module_list[i](tensor))
-            breakpoint()
+            if i == 0:
+                out = self.module_list[i](tensor)[:,:,None]
+            else:
+                out = torch.cat((out, self.module_list[i](tensor)[:,:,None]), 2)
 
-        return out_array
+        return out

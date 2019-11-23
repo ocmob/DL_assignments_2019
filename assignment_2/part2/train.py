@@ -25,6 +25,7 @@ import argparse
 import numpy as np
 
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -36,10 +37,10 @@ from model import TextGenerationModel
 
 ################################################################################
 
-def acc(predictions, targets):
+def acc(predictions, targets, num_classes):
 
   with torch.no_grad():
-      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=10).float() * targets).sum()/targets.sum()
+      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=num_classes).float() * targets).sum()/targets.sum()
 
   return accuracy.detach().cpu().item()
 
@@ -70,13 +71,10 @@ def train(config):
         batch_targets = batch_targets.to(device)
 
         optimizer.zero_grad()
-
         pred = model.forward(batch_inputs)
-
-        breakpoint()
-
         loss = criterion(pred, batch_targets)
-        accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10).float()) 
+
+        accuracy = acc(pred, F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
         optimizer.step()
@@ -94,9 +92,19 @@ def train(config):
                     accuracy, loss
             ))
 
-        if step == config.sample_every:
-            # Generate some sentences by sampling from the model
-            pass
+        if (step % config.sample_every) == 0:
+            #integer from 0 to 83
+            #then 
+            with torch.no_grad():
+                tensor = torch.zeros(config.seq_length, 1)
+                tensor[0][0] = np.random.randint(0, dataset.vocab_size)
+                response = model.forward(tensor)
+                codes = []
+                for char in response:
+                    #breakpoint()
+                    codes.append(char.argmax().item())
+                string = dataset.convert_to_string(codes)
+                print(string)
 
         if step == config.train_steps:
             # If you receive a PyTorch data-loader error, check this bug report:
@@ -129,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate_step', type=int, default=5000, help='Learning rate step')
     parser.add_argument('--dropout_keep_prob', type=float, default=1.0, help='Dropout keep probability')
 
-    parser.add_argument('--train_steps', type=int, default=1e6, help='Number of training steps')
+    parser.add_argument('--train_steps', type=int, default=int(1e6), help='Number of training steps')
     parser.add_argument('--max_norm', type=float, default=5.0, help='--')
 
     # Misc params
