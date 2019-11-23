@@ -122,16 +122,16 @@ def train(config):
 
             if step % 10 == 0:
                 if config.train_log != "STDOUT":
-                    outfile.write("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                    outfile.write("[{}] Averaging Step: {} Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
                           "Accuracy = {:.2f}, Loss = {:.3f}\n".format(
-                            datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                            datetime.now().strftime("%Y-%m-%d %H:%M"), i, step,
                             config.train_steps, config.batch_size, examples_per_second,
                             accuracy, loss
                     ))
                 else:
-                    print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                    print("[{}] Averaging Step: {} Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
                           "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                            datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                            datetime.now().strftime("%Y-%m-%d %H:%M"), i, step,
                             config.train_steps, config.batch_size, examples_per_second,
                             accuracy, loss
                     ))
@@ -168,7 +168,6 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
 
     # TODO DELETE ME
-    import time
     parser.add_argument('--train_log', type=str, default="STDOUT", help="Output file name")
 
     config = parser.parse_args()

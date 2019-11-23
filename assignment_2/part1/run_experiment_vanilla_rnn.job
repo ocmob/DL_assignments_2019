@@ -15,10 +15,15 @@ module load Anaconda3/2018.12
 
 conda activate dl
 
-PALINDROME_LENGTH=($(seq 5 1 15))
+mkdir $TMPDIR/results_kurbanski
+
+#PALINDROME_LENGTH=($(seq 5 1 15))
+PALINDROME_LENGTH=($(seq 5 1 5))
 for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
 	printf "$LENGTH,"
-	python train.py --input_length $LENGTH
+	python train.py --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
 	echo ""
 done
+
+cp $TMPDIR/results_kurbanski/*.log ./results/
