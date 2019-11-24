@@ -31,7 +31,9 @@ class TextGenerationModel(nn.Module):
         self.stepper = 0
         self.lstm = nn.LSTM(input_size = vocabulary_size,
                 hidden_size = lstm_num_hidden,
-                num_layers = lstm_num_layers).to(device)
+                num_layers = lstm_num_layers,
+                batch_first=True).to(device)
+                #).to(device)
         self.linear=nn.Linear(lstm_num_hidden, vocabulary_size).to(device)
 
         #self.module_list = nn.ModuleList()
@@ -40,7 +42,7 @@ class TextGenerationModel(nn.Module):
 
     def forward(self, x):
         lstmout, _ = self.lstm(x, None)
-        lstmout = lstmout.view(64, 30, -1)
+        #lstmout = lstmout.view(64, 30, -1)
         out = self.linear(lstmout)
 
         #out = self.linear(lstmout)

@@ -72,8 +72,10 @@ def train(config):
             # Only for time measurement of step through network
             t1 = time.time()
 
+#            batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
+#                    ).view(30, 64, -1).float().to(device)
             batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
-                    ).view(30, 64, -1).float().to(device)
+                    ).float().to(device)
             #batch_inputs = batch_inputs.float().view(config.seq_length, -1, 1).float().to(device)
 
             batch_targets = batch_targets.to(device)
@@ -105,24 +107,24 @@ def train(config):
                         accuracy, loss
                 ))
 
-            #if (step % config.sample_every) == 0:
-            #    with torch.no_grad():
-            #        codes = []
+            if (step % config.sample_every) == 0:
+                with torch.no_grad():
+                    codes = []
 
-            #        input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
-            #        input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
+                    input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
+                    input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
 
-            #        for i in range(config.seq_length-1):
-            #            response = model.step(input_tensor)
-            #            logits = F.log_softmax(config.temp*response, dim=1)
-            #            dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
-            #            code = dist.sample().argmax().item()
-            #            input_tensor *= 0
-            #            input_tensor[0, 0, code] = 1
-            #            codes.append(code)
-            #        string = dataset.convert_to_string(codes)
-            #        model.reset_stepper()
-            #        print(string)
+                    for i in range(config.seq_length-1):
+                        response = model.step(input_tensor)
+                        logits = F.log_softmax(config.temp*response, dim=1)
+                        dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
+                        code = dist.sample().argmax().item()
+                        input_tensor *= 0
+                        input_tensor[0, 0, code] = 1
+                        codes.append(code)
+                    string = dataset.convert_to_string(codes)
+                    model.reset_stepper()
+                    print(string)
 
             if step == config.train_steps:
                 # If you receive a PyTorch data-loader error, check this bug report:
