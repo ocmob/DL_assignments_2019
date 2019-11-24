@@ -100,8 +100,18 @@ def train(config):
                 codes = []
                 model.reset_stepper()
 
+
                 response = model.step(tensor)
-                code = response.argmax().item()
+                #sample = F.gumbel_softmax(response, tau=config.temp, hard=True)
+                #code = sample.argmax().item()
+
+                logits = F.log_softmax(config.temp*response)
+                dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
+
+                code = dist.sample().argmax().item()
+
+                breakpoint()
+
                 tensor[0, 0] = code
                 codes.append(code)
                 for i in range(config.seq_length-1):
@@ -153,6 +163,7 @@ if __name__ == "__main__":
 
     # TODO I ADDED
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
+    parser.add_argument('--temp', type=float, default=1.0, help="Temperature parameter for random sampling")
 
     config = parser.parse_args()
 
