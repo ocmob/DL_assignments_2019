@@ -22,12 +22,12 @@ for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
 	echo "RNN LINEAR"
 	printf "$LENGTH,"
-	python train.py --model_type RNN --linear --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	python train.py --model_type RNN --linear --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/RNN_linear_length_${LENGTH}.log"
 	echo ""
 
 	echo "RNN"
 	printf "$LENGTH,"
-	python train.py --model_type RNN --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	python train.py --model_type RNN --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/RNN_length_${LENGTH}.log"
 	echo ""
 done
 
@@ -36,12 +36,12 @@ for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
 	echo "LSTM LINEAR"
 	printf "$LENGTH,"
-	python train.py --model_type LSTM --linear --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	python train.py --model_type LSTM --linear --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/LSTM_linear_length_${LENGTH}.log"
 	echo ""
 
 	echo "LSTM"
 	printf "$LENGTH,"
-	python train.py --model_type LSTM --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	python train.py --model_type LSTM --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/LSTM_length_${LENGTH}.log"
 	echo ""
 done
 

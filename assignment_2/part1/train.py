@@ -43,12 +43,13 @@ from lstm import LSTM
 
 ################################################################################
 
-def acc(predictions, targets):
+def acc(predictions, targets, num_classes):
 
   with torch.no_grad():
-      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=config.num_classes).float() * targets).sum()/targets.sum()
+      accuracy = (F.one_hot(predictions.max(dim=1).indices, 
+          num_classes=num_classes).float() * targets).sum()/targets.sum()
 
-  return accuracy.detach().cpu().item()
+  return accuracy.cpu().item()
 
 def train(config):
 
@@ -111,8 +112,7 @@ def train(config):
             ############################################################################
 
             loss = criterion(pred, batch_targets)
-            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=config.num_classes).float()) 
-
+            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=config.num_classes).float(), config.num_classes) 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
             optimizer.step()
@@ -150,9 +150,8 @@ def train(config):
             pred = model.forward(test_inputs)
             loss = criterion(pred, test_targets)
 
-        accuracy = acc(pred, F.one_hot(test_targets, num_classes=config.num_classes).float()) 
+        accuracy = acc(pred, F.one_hot(test_targets, num_classes=config.num_classes).float(), config.num_classes) 
         accuracy_avg += accuracy 
-
 
     print(accuracy_avg/iters, end='')
 
@@ -176,8 +175,6 @@ if __name__ == "__main__":
     parser.add_argument('--train_steps', type=int, default=10000, help='Number of training steps')
     parser.add_argument('--max_norm', type=float, default=10.0)
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
-
-    # TODO DELETE ME
     parser.add_argument('--linear', action='store_true', help="Make the net linear")
     parser.add_argument('--train_log', type=str, default="STDOUT", help="Output file name")
 

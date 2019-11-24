@@ -27,9 +27,9 @@ class LSTM(nn.Module):
 
     def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu', save_grads=False, linear=False):
         super(LSTM, self).__init__()
-        self.device = device
-        self.linear=linear
 
+        self.linear=linear
+        self.device = device
         self.save_grads = save_grads
 
         # new activations come here
@@ -78,6 +78,7 @@ class LSTM(nn.Module):
         for char_batch in x.T:
 
             char_batch = char_batch[:, None]
+
             if self.linear:
                 g = char_batch @ self.wgx.T + hprev @ self.wgh + self.bg
             else:
@@ -86,7 +87,7 @@ class LSTM(nn.Module):
             f = torch.sigmoid(char_batch @ self.wfx.T + hprev @ self.wfh + self.bf)
             o = torch.sigmoid(char_batch @ self.wox.T + hprev @ self.woh + self.bo)
             cprev = g * i + cprev * f
-            #hprev = torch.tanh(cprev) * o
+
             if self.linear:
                 hprev = cprev * o
             else:
