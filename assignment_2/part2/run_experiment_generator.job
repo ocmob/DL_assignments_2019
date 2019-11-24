@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=kurbanski_cnn_pytorch
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=6:00:00
+#SBATCH --mem=60000M
+#SBATCH --partition=gpu_shared_course
+#SBATCH --gres=gpu:1
+
+module purge
+module load 2019
+module load Anaconda3/2018.12
+. /sw/arch/Debian9/EB_production/2019/software/Anaconda3/2018.12/etc/profile.d/conda.sh
+
+conda activate dl
+
+mkdir $TMPDIR/data
+cp ./assets/book_EN_democracy_in_the_US.txt $TMPDIR/data
+
+TEMPERATURE=(0.5 1 2.0)
+for TEMP in "${TEMPERATURE[@]}"
+do
+	echo "Temperature $TEMP"
+	python train.py --sample_every 1000 --print_every 1000 --seq_length 30 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --temp $TEMP
+done
