@@ -96,13 +96,19 @@ def train(config):
             #integer from 0 to 83
             #then 
             with torch.no_grad():
-                tensor = torch.zeros(config.seq_length, 1)
-                tensor[0][0] = np.random.randint(0, dataset.vocab_size)
-                response = model.forward(tensor)
+                tensor = torch.tensor([[np.random.randint(0, dataset.vocab_size)]]).to(device)
                 codes = []
-                for char in response:
-                    #breakpoint()
-                    codes.append(char.argmax().item())
+                model.reset_stepper()
+
+                response = model.step(tensor)
+                code = response.argmax().item()
+                tensor[0, 0] = code
+                codes.append(code)
+                for i in range(dataset.vocab_size-1):
+                    response = model.step(tensor)
+                    code = response.argmax().item()
+                    tensor[0, 0] = code
+                    codes.append(code)
                 string = dataset.convert_to_string(codes)
                 print(string)
 

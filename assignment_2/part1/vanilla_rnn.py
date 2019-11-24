@@ -52,7 +52,8 @@ class VanillaRNN(nn.Module):
             self.grad_over_time = []
 
         for char_batch in x.T:
-            hprev = torch.tanh(char_batch[:, None] @ self.whx.T + hprev @ self.whh.T + self.bh)
+            #hprev = torch.tanh(char_batch[:, None] @ self.whx.T + hprev @ self.whh.T + self.bh)
+            hprev = char_batch[:, None] @ self.whx.T + hprev @ self.whh.T + self.bh
             if self.save_grads:
                 self.grad_over_time.append(hprev)
                 hprev.retain_grad()
