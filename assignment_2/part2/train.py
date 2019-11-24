@@ -67,21 +67,27 @@ def train(config):
         for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
             model.zero_grad()
+            breakpoint()
+
 
             # Only for time measurement of step through network
             t1 = time.time()
 
-            #batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
-            #        ).view(config.seq_length, -1, dataset.vocab_size).float().to(device)
-            batch_inputs = batch_inputs.float().view(config.seq_length, -1, 1).float().to(device)
+            batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
+                    ).float().to(device)
+            #batch_inputs = batch_inputs.float().view(config.seq_length, -1, 1).float().to(device)
 
             batch_targets = batch_targets.to(device)
 
             optimizer.zero_grad()
-            pred = model.forward(batch_inputs).view(-1, dataset.vocab_size, config.seq_length)
-            loss = criterion(pred, batch_targets)
+            pred = model.forward(batch_inputs)
+            #loss = criterion(pred.view(-1, 84, 30), batch_targets)
 
-            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
+            loss = criterion(pred.transpose(2, 1), batch_targets)
+
+            accuracy = acc(pred.transpose(2, 1), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
+            #breakpoint()
+            #accuracy = acc(pred.view(-1, 84, 30), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
             optimizer.step()
