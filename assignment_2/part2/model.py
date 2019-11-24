@@ -47,3 +47,13 @@ class TextGenerationModel(nn.Module):
                 out = torch.cat((out, self.module_list[i](tensor)[:,:,None]), 2)
 
         return out
+
+    def reset_stepper(self):
+        self.stepper = 0
+
+    def step(self, x):
+        x = x.T[:,:, None].float()
+        lstmout, _ = self.lstm(x)
+        out = self.module_list[self.stepper](lstmout[0])
+
+        return out
