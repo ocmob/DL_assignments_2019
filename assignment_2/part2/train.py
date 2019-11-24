@@ -63,60 +63,65 @@ def train(config):
     optimizer = optim.RMSprop(model.parameters(), config.learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=50, verbose=True)
 
-    for step, (batch_inputs, batch_targets) in enumerate(data_loader):
+    for i in range(100):
+        for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
-        # Only for time measurement of step through network
-        t1 = time.time()
+            model.zero_grad()
 
-        batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
-                ).view(config.seq_length, -1, dataset.vocab_size).float().to(device)
-        batch_targets = batch_targets.to(device)
+            # Only for time measurement of step through network
+            t1 = time.time()
 
-        optimizer.zero_grad()
-        pred = model.forward(batch_inputs).view(-1, dataset.vocab_size, config.seq_length)
-        loss = criterion(pred, batch_targets)
+            #batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
+            #        ).view(config.seq_length, -1, dataset.vocab_size).float().to(device)
+            batch_inputs = batch_inputs.float().view(config.seq_length, -1, 1).float().to(device)
 
-        accuracy = acc(pred, F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
-        optimizer.step()
+            batch_targets = batch_targets.to(device)
 
-        # Just for time measurement
-        t2 = time.time()
-        examples_per_second = config.batch_size/float(t2-t1)
+            optimizer.zero_grad()
+            pred = model.forward(batch_inputs).view(-1, dataset.vocab_size, config.seq_length)
+            loss = criterion(pred, batch_targets)
 
-        if step % config.print_every == 0:
-            scheduler.step(loss)
-            print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-                  "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                    datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-                    config.train_steps, config.batch_size, examples_per_second,
-                    accuracy, loss
-            ))
+            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
+            optimizer.step()
 
-        #if (step % config.sample_every) == 0:
-        #    with torch.no_grad():
-        #        codes = []
+            # Just for time measurement
+            t2 = time.time()
+            examples_per_second = config.batch_size/float(t2-t1)
 
-        #        input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
-        #        input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
+            if step % config.print_every == 0:
+                scheduler.step(loss)
+                print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                      "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), step,
+                        config.train_steps, config.batch_size, examples_per_second,
+                        accuracy, loss
+                ))
 
-        #        for i in range(config.seq_length-1):
-        #            response = model.step(input_tensor)
-        #            logits = F.log_softmax(config.temp*response, dim=1)
-        #            dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
-        #            code = dist.sample().argmax().item()
-        #            input_tensor *= 0
-        #            input_tensor[0, 0, code] = 1
-        #            codes.append(code)
-        #        string = dataset.convert_to_string(codes)
-        #        model.reset_stepper()
-        #        print(string)
+            #if (step % config.sample_every) == 0:
+            #    with torch.no_grad():
+            #        codes = []
 
-        if step == config.train_steps:
-            # If you receive a PyTorch data-loader error, check this bug report:
-            # https://github.com/pytorch/pytorch/pull/9655
-            break
+            #        input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
+            #        input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
+
+            #        for i in range(config.seq_length-1):
+            #            response = model.step(input_tensor)
+            #            logits = F.log_softmax(config.temp*response, dim=1)
+            #            dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
+            #            code = dist.sample().argmax().item()
+            #            input_tensor *= 0
+            #            input_tensor[0, 0, code] = 1
+            #            codes.append(code)
+            #        string = dataset.convert_to_string(codes)
+            #        model.reset_stepper()
+            #        print(string)
+
+            if step == config.train_steps:
+                # If you receive a PyTorch data-loader error, check this bug report:
+                # https://github.com/pytorch/pytorch/pull/9655
+                break
 
     print('Done training.')
 

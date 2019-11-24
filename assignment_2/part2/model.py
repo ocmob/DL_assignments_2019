@@ -33,7 +33,6 @@ class TextGenerationModel(nn.Module):
                 hidden_size = lstm_num_hidden,
                 num_layers = lstm_num_layers).to(device)
         self.linear=nn.Linear(lstm_num_hidden, vocabulary_size).to(device)
-        nn.init.xavier_uniform_(self.linear.weight)
         #self.module_list = nn.ModuleList()
         #for i in range(seq_length):
             #self.module_list.append(nn.Linear(lstm_num_hidden, vocabulary_size).to(device))
