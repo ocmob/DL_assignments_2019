@@ -28,31 +28,28 @@ class TextGenerationModel(nn.Module):
 
         super(TextGenerationModel, self).__init__()
 
-        self.lstm = nn.LSTM(input_size = 1,
+        self.stepper = 0
+        self.lstm = nn.LSTM(input_size = vocabulary_size,
                 hidden_size = lstm_num_hidden,
                 num_layers = lstm_num_layers).to(device)
-
         self.module_list = nn.ModuleList()
         for i in range(seq_length):
             self.module_list.append(nn.Linear(lstm_num_hidden, vocabulary_size).to(device))
 
     def forward(self, x):
-
-        x = x.T[:,:, None].float()
         lstmout, _ = self.lstm(x)
         for i, tensor in enumerate(lstmout):
             if i == 0:
                 out = self.module_list[i](tensor)[:,:,None]
             else:
                 out = torch.cat((out, self.module_list[i](tensor)[:,:,None]), 2)
-
         return out
 
     def reset_stepper(self):
         self.stepper = 0
+        del self.step_hidden
 
     def step(self, x):
-        x = x.T[:,:, None].float()
         if self.stepper == 0:
             lstmout, self.step_hidden = self.lstm(x)
         else:

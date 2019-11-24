@@ -67,7 +67,8 @@ def train(config):
         # Only for time measurement of step through network
         t1 = time.time()
 
-        batch_inputs = batch_inputs.to(device)
+        batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
+                ).view(config.seq_length, -1, dataset.vocab_size).float().to(device)
         batch_targets = batch_targets.to(device)
 
         optimizer.zero_grad()
@@ -93,33 +94,22 @@ def train(config):
             ))
 
         if (step % config.sample_every) == 0:
-            #integer from 0 to 83
-            #then 
             with torch.no_grad():
-                tensor = torch.tensor([[np.random.randint(0, dataset.vocab_size)]]).to(device)
                 codes = []
-                model.reset_stepper()
 
+                input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
+                input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
 
-                response = model.step(tensor)
-                #sample = F.gumbel_softmax(response, tau=config.temp, hard=True)
-                #code = sample.argmax().item()
-
-                logits = F.log_softmax(config.temp*response)
-                dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
-
-                code = dist.sample().argmax().item()
-
-                breakpoint()
-
-                tensor[0, 0] = code
-                codes.append(code)
                 for i in range(config.seq_length-1):
-                    response = model.step(tensor)
-                    code = response.argmax().item()
-                    tensor[0, 0] = code
+                    response = model.step(input_tensor)
+                    logits = F.log_softmax(config.temp*response, dim=1)
+                    dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
+                    code = dist.sample().argmax().item()
+                    input_tensor *= 0
+                    input_tensor[0, 0, code] = 1
                     codes.append(code)
                 string = dataset.convert_to_string(codes)
+                model.reset_stepper()
                 print(string)
 
         if step == config.train_steps:
