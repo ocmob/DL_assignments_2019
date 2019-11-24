@@ -32,17 +32,15 @@ class TextGenerationModel(nn.Module):
         self.lstm = nn.LSTM(input_size = vocabulary_size,
                 hidden_size = lstm_num_hidden,
                 num_layers = lstm_num_layers).to(device)
-        self.module_list = nn.ModuleList()
-        for i in range(seq_length):
-            self.module_list.append(nn.Linear(lstm_num_hidden, vocabulary_size).to(device))
+        self.linear=nn.Linear(lstm_num_hidden, vocabulary_size).to(device)
+        nn.init.xavier_uniform_(self.linear.weight)
+        #self.module_list = nn.ModuleList()
+        #for i in range(seq_length):
+            #self.module_list.append(nn.Linear(lstm_num_hidden, vocabulary_size).to(device))
 
     def forward(self, x):
         lstmout, _ = self.lstm(x)
-        for i, tensor in enumerate(lstmout):
-            if i == 0:
-                out = self.module_list[i](tensor)[:,:,None]
-            else:
-                out = torch.cat((out, self.module_list[i](tensor)[:,:,None]), 2)
+        out = self.linear(lstmout)
         return out
 
     def reset_stepper(self):
@@ -54,6 +52,7 @@ class TextGenerationModel(nn.Module):
             lstmout, self.step_hidden = self.lstm(x)
         else:
             lstmout, self.step_hidden = self.lstm(x, self.step_hidden)
-        out = self.module_list[self.stepper](lstmout[0])
+        #out = self.module_list[self.stepper](lstmout[0])
+        out = self.linear(lstmout[0])
         self.stepper += 1
         return out
