@@ -178,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
 
     # TODO DELETE ME
+    parser.add_argument('--linear', action='store_true', help="Make the net linear")
     parser.add_argument('--train_log', type=str, default="STDOUT", help="Output file name")
 
     config = parser.parse_args()

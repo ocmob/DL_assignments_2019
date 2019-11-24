@@ -20,6 +20,26 @@ mkdir $TMPDIR/results_kurbanski
 PALINDROME_LENGTH=($(seq 10 1 15))
 for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
+	echo "RNN LINEAR"
+	printf "$LENGTH,"
+	python train.py --model_type RNN --linear --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	echo ""
+
+	echo "RNN"
+	printf "$LENGTH,"
+	python train.py --model_type RNN --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	echo ""
+done
+
+PALINDROME_LENGTH=(20 30 35 40)
+for LENGTH in "${PALINDROME_LENGTH[@]}"
+do
+	echo "LSTM LINEAR"
+	printf "$LENGTH,"
+	python train.py --model_type LSTM --linear --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
+	echo ""
+
+	echo "LSTM"
 	printf "$LENGTH,"
 	python train.py --model_type LSTM --input_length $LENGTH --train_log "${TMPDIR}/results_kurbanski/length_${LENGTH}.log"
 	echo ""

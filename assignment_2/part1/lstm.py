@@ -25,9 +25,10 @@ import torch.nn as nn
 
 class LSTM(nn.Module):
 
-    def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu', save_grads=False):
+    def __init__(self, seq_length, input_dim, num_hidden, num_classes, device='cpu', save_grads=False, linear=False):
         super(LSTM, self).__init__()
         self.device = device
+        self.linear=linear
 
         self.save_grads = save_grads
 
@@ -77,14 +78,19 @@ class LSTM(nn.Module):
         for char_batch in x.T:
 
             char_batch = char_batch[:, None]
-            #g = torch.tanh(char_batch @ self.wgx.T + hprev @ self.wgh + self.bg)
-            g = char_batch @ self.wgx.T + hprev @ self.wgh + self.bg
+            if self.linear:
+                g = char_batch @ self.wgx.T + hprev @ self.wgh + self.bg
+            else:
+                g = torch.tanh(char_batch @ self.wgx.T + hprev @ self.wgh + self.bg)
             i = torch.sigmoid(char_batch @ self.wix.T + hprev @ self.wih + self.bi)
             f = torch.sigmoid(char_batch @ self.wfx.T + hprev @ self.wfh + self.bf)
             o = torch.sigmoid(char_batch @ self.wox.T + hprev @ self.woh + self.bo)
             cprev = g * i + cprev * f
             #hprev = torch.tanh(cprev) * o
-            hprev = cprev * o
+            if self.linear:
+                hprev = cprev * o
+            else:
+                hprev = torch.tanh(cprev) * o
 
             if self.save_grads:
                 self.grad_over_time.append(hprev)
