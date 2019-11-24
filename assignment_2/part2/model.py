@@ -53,7 +53,10 @@ class TextGenerationModel(nn.Module):
 
     def step(self, x):
         x = x.T[:,:, None].float()
-        lstmout, _ = self.lstm(x)
+        if self.stepper == 0:
+            lstmout, self.step_hidden = self.lstm(x)
+        else:
+            lstmout, self.step_hidden = self.lstm(x, self.step_hidden)
         out = self.module_list[self.stepper](lstmout[0])
-
+        self.stepper += 1
         return out

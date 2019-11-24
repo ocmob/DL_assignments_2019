@@ -85,11 +85,11 @@ def train(config):
 
     # Initialize the model that we are going to use
     model = VanillaRNN(config.input_length, config.input_dim,
-            config.num_hidden, config.num_classes, device, True)
+            config.num_hidden, config.num_classes, device, True, True)
     grads_vanilla = get_grads(model, device, data_loader, dataset)
 
     model = LSTM(config.input_length, config.input_dim,
-            config.num_hidden, config.num_classes, device, True)
+            config.num_hidden, config.num_classes, device, True, True)
     grads_lstm = get_grads(model, device, data_loader, dataset)
 
 

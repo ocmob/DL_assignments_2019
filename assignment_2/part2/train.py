@@ -104,7 +104,7 @@ def train(config):
                 code = response.argmax().item()
                 tensor[0, 0] = code
                 codes.append(code)
-                for i in range(dataset.vocab_size-1):
+                for i in range(config.seq_length-1):
                     response = model.step(tensor)
                     code = response.argmax().item()
                     tensor[0, 0] = code
