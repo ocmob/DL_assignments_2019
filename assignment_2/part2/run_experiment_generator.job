@@ -18,9 +18,14 @@ conda activate dl
 mkdir $TMPDIR/data
 cp ./assets/book_EN_democracy_in_the_US.txt $TMPDIR/data
 
+LENGTHS=(15 30 50)
 TEMPERATURE=(0.5 1 2.0)
-for TEMP in "${TEMPERATURE[@]}"
+for LENGTH in "${LENGTHS[@]}"
 do
-	echo "Temperature $TEMP"
-	python train.py --sample_every 1000 --print_every 1000 --seq_length 30 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --temp $TEMP
+	for TEMP in "${TEMPERATURE[@]}"
+	do
+		echo "Temperature $TEMP"
+		echo "Length $LENGTH"
+		python train.py --sample_every 500 --print_every 500 --seq_length $LENGTH --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --temp $TEMP
+	done
 done
