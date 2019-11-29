@@ -17,6 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
+
 import os
 import time
 from datetime import datetime
@@ -30,10 +33,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-#from part2.dataset import TextDataset
-#from part2.model import TextGenerationModel
-from dataset import TextDataset
-from model import TextGenerationModel
+from part2.dataset import TextDataset
+from part2.model import TextGenerationModel
 
 ################################################################################
 
@@ -71,12 +72,8 @@ def train(config):
         # Only for time measurement of step through network
         t1 = time.time()
 
-#            batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
-#                    ).view(30, 64, -1).float().to(device)
         batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
                 ).float().to(device)
-        #batch_inputs = batch_inputs.float().view(config.seq_length, -1, 1).float().to(device)
-
         batch_targets = batch_targets.to(device)
 
         optimizer.zero_grad()
