@@ -55,11 +55,8 @@ def sample(config):
             codes = []
 
             for k in range(config.no_random):
-                #input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
-                #input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
-
-                input_tensor = torch.zeros((1, 1, 86), device=device)
-                input_tensor[0, 0, np.random.randint(0, 86)] = 1
+                input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
+                input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
 
                 for i in range(config.seq_length-1):
                     response = model.step(input_tensor)
@@ -84,17 +81,15 @@ def sample(config):
             codes = []
             for char in config.sentence:
                 codes.append(dataset._char_to_ix[char])
-            #input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
-            #input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
-            input_tensor = torch.zeros((1, len(codes), 86), device=device)
+            input_tensor = torch.zeros((1, len(codes), dataset.vocab_size), device=device)
             input_tensor[0, np.arange(0, len(codes), 1), codes] = 1
 
             chars_to_gen = config.seq_length - len(codes)
 
             for i in range(len(codes)):
-                response = model.step(input_tensor[:, i, :].view(1, 1, 86))
+                response = model.step(input_tensor[:, i, :].view(1, 1, dataset.vocab_size))
 
-            input_tensor = torch.zeros((1, 1, 86), device=device)
+            input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
             for i in range(chars_to_gen):
                 logits = F.log_softmax(config.temp*response, dim=1)
                 dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
@@ -119,12 +114,10 @@ def sample(config):
                 beam_dict = {}
                 beam_dict['hidden_state'] = None
                 beam_dict['logit'] = -np.log(config.beam_width)
-                # FIXME 86
-                beam_dict['seq_codes'] = [np.random.randint(0, 86)]
+                beam_dict['seq_codes'] = [np.random.randint(0, dataset.vocab_size)]
                 beams.append(beam_dict)
 
-            # FIXME 86
-            input_tensor = torch.zeros((1, 1, 86), device=device)
+            input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
 
             import copy
 
