@@ -70,73 +70,81 @@ def train(config):
     if config.samples_out_file != "STDOUT":
         samples_out_file = open(config.samples_out_file, 'w')
 
-    for step, (batch_inputs, batch_targets) in enumerate(data_loader):
+    epochs = config.train_steps // len(data_loader) + 1
 
-        model.zero_grad()
+    print("Will train on {} batches in {} epochs.".format(config.train_steps, epochs))
 
+    for epoch in range(epochs):
+        data_loader_iter = iter(data_loader)
 
-        # Only for time measurement of step through network
-        t1 = time.time()
+        if epoch == config.train_steps // len(data_loader):
+            batches = config.train_steps % len(data_loader)
+        else:
+            batches = len(data_loader)
 
-        batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
-                ).float().to(device)
-        batch_targets = batch_targets.to(device)
+        for step in range(batches):
+            batch_inputs, batch_targets = next(data_loader_iter)
+            model.zero_grad()
 
-        optimizer.zero_grad()
+            # Only for time measurement of step through network
+            t1 = time.time()
 
-        pred = model.forward(batch_inputs)
-        loss = criterion(pred.transpose(2, 1), batch_targets)
-        accuracy = acc(pred.transpose(2, 1), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
-        loss.backward()
+            batch_inputs = F.one_hot(batch_inputs, num_classes=dataset.vocab_size,
+                    ).float().to(device)
+            batch_targets = batch_targets.to(device)
 
-        accuracy_train.append(accuracy)
-        loss_train.append(loss.item())
+            optimizer.zero_grad()
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
-        optimizer.step()
+            pred = model.forward(batch_inputs)
+            loss = criterion(pred.transpose(2, 1), batch_targets)
+            accuracy = acc(pred.transpose(2, 1), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
+            loss.backward()
 
-        # Just for time measurement
-        t2 = time.time()
-        examples_per_second = config.batch_size/float(t2-t1)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
+            optimizer.step()
 
-        scheduler.step()
+            # Just for time measurement
+            t2 = time.time()
+            examples_per_second = config.batch_size/float(t2-t1)
 
-        if step % config.print_every == 0:
-            print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
-                  "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                    datetime.now().strftime("%Y-%m-%d %H:%M"), step,
-                    config.train_steps, config.batch_size, examples_per_second,
-                    accuracy, loss
-            ))
+            scheduler.step()
 
-        if (step % config.sample_every) == 0:
-            with torch.no_grad():
-                codes = []
+            if (epoch+1)*step % config.seval_evry == 0:
+                accuracy_train.append(accuracy)
+                loss_train.append(loss.item())
 
-                input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
-                input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
+            if (epoch+1)*step % config.print_every == 0:
+                print("[{}] Epoch: {:04d}/{:04d}, Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
+                      "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), epoch, epochs, (epoch+1)*step,
+                        config.train_steps, config.batch_size, examples_per_second,
+                        accuracy, loss
+                ))
 
-                for i in range(config.seq_length-1):
-                    response = model.step(input_tensor)
-                    logits = F.log_softmax(config.temp*response, dim=1)
-                    dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
-                    code = dist.sample().argmax().item()
-                    input_tensor *= 0
-                    input_tensor[0, 0, code] = 1
-                    codes.append(code)
+            if ((epoch+1)*step % config.sample_every) == 0:
+                with torch.no_grad():
+                    codes = []
 
-                string = dataset.convert_to_string(codes)
-                model.reset_stepper()
+                    input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
+                    input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
 
-                if config.samples_out_file != "STDOUT":
-                    samples_out_file.write("Step {}: ".format(step) + string + "\n")
-                else:
-                    print(string)
+                    for i in range(config.seq_length-1):
+                        response = model.step(input_tensor)
+                        logits = F.log_softmax(config.temp*response, dim=1)
+                        dist = torch.distributions.one_hot_categorical.OneHotCategorical(logits=logits)
+                        code = dist.sample().argmax().item()
+                        input_tensor *= 0
+                        input_tensor[0, 0, code] = 1
+                        codes.append(code)
 
-        if step == config.train_steps:
-            # If you receive a PyTorch data-loader error, check this bug report:
-            # https://github.com/pytorch/pytorch/pull/9655
-            break
+                    string = dataset.convert_to_string(codes)
+                    model.reset_stepper()
+
+                    if config.samples_out_file != "STDOUT":
+                        samples_out_file.write("Step {}: ".format(step) + string + "\n")
+                    else:
+                        print(string)
+
 
     if config.samples_out_file != "STDOUT":
         samples_out_file.close()
@@ -149,7 +157,7 @@ def train(config):
         fig, ax = plt.subplots(1, 2, figsize=(10,5))
         fig.suptitle('Training curves for Pytorch 2-layer LSTM.\nFinal loss: {:.4f}. Final accuracy: {:.4f}\nSequence length: {}, Hidden units: {}, LSTM layers: {}, Learning rate: {:.4f}'.format(
             loss_train[-1], accuracy_train[-1], config.seq_length, config.lstm_num_hidden, config.lstm_num_layers, config.learning_rate))
-        plt.subplots_adjust(top=0.85)
+        plt.subplots_adjust(top=0.8)
 
         ax[0].set_title('Loss')
         ax[0].set_ylabel('Loss value')
@@ -196,6 +204,7 @@ if __name__ == "__main__":
     # Misc params
     parser.add_argument('--print_every', type=int, default=5, help='How often to print training progress')
     parser.add_argument('--sample_every', type=int, default=100, help='How often to sample from the model')
+    parser.add_argument('--seval_every', type=int, default=100, help='How often to save metrics from the model')
 
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
     parser.add_argument('--temp', type=float, default=1.0, help="Temperature parameter for random sampling")
