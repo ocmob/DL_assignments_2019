@@ -57,8 +57,10 @@ def sample(config):
         print(dataset.vocab_size)
 
         for i in range(config.no_random):
-            input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
-            input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
+            #input_tensor = torch.zeros((1, 1, dataset.vocab_size), device=device)
+            input_tensor = torch.zeros((1, 1, 86), device=device)
+            #input_tensor[0, 0, np.random.randint(0, dataset.vocab_size)] = 1
+            input_tensor[0, 0, np.random.randint(0, 86)] = 1
 
             for i in range(config.seq_length-1):
                 response = model.step(input_tensor)
@@ -67,10 +69,14 @@ def sample(config):
                 code = dist.sample().argmax().item()
                 input_tensor *= 0
                 input_tensor[0, 0, code] = 1
+                print(code)
                 codes.append(code)
 
             string = dataset.convert_to_string(codes)
             model.reset_stepper()
+
+            print(dataset._ix_to_char)
+
 
             if config.samples_out_file != "STDOUT":
                 samples_out_file.write(string + "\n")
