@@ -18,8 +18,4 @@ conda activate dl
 mkdir $TMPDIR/data
 cp ./assets/book_EN_democracy_in_the_US.txt $TMPDIR/data
 
-python train.py --sample_every 1000000 --print_every 100 --seq_length 5 --train_steps 1000 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --curves_out_file test_training.jpg --model_out_file test_model.out
-
-python train.py --sample_every 1000000 --print_every 100 --seq_length 30 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --curves_out_file basic_training.jpg
-
-python train.py --sample_every 1000000 --print_every 100 --seq_length 150 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --curves_out_file 150_training.jpg --model_out_file 150_lstm.out
+python train.py --sample_every 1000000 --print_every 100 --seq_length 150 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --curves_out_file results/150_training_epochs.jpg --model_out_file models/150_lstm_epochs.out --train_steps 50000

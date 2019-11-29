@@ -72,7 +72,7 @@ def train(config):
 
     epochs = config.train_steps // len(data_loader) + 1
 
-    print("Will train on {} batches in {} epochs.".format(config.train_steps, epochs))
+    print("Will train on {} batches in {} epochs, max {} batches/epoch.".format(config.train_steps, epochs, len(data_loader)))
 
     for epoch in range(epochs):
         data_loader_iter = iter(data_loader)
@@ -109,19 +109,19 @@ def train(config):
 
             scheduler.step()
 
-            if (epoch+1)*step % config.seval_evry == 0:
+            if (epoch*len(data_loader) + step + 1) % config.seval_every == 0:
                 accuracy_train.append(accuracy)
                 loss_train.append(loss.item())
 
-            if (epoch+1)*step % config.print_every == 0:
+            if (epoch*len(data_loader) + step + 1) % config.print_every == 0:
                 print("[{}] Epoch: {:04d}/{:04d}, Train Step {:04d}/{:04d}, Batch Size = {}, Examples/Sec = {:.2f}, "
                       "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                        datetime.now().strftime("%Y-%m-%d %H:%M"), epoch, epochs, (epoch+1)*step,
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), epoch+1, epochs, (epoch*len(data_loader) + step + 1),
                         config.train_steps, config.batch_size, examples_per_second,
                         accuracy, loss
                 ))
 
-            if ((epoch+1)*step % config.sample_every) == 0:
+            if (epoch*len(data_loader) + step + 1) == 0:
                 with torch.no_grad():
                     codes = []
 
@@ -161,13 +161,13 @@ def train(config):
 
         ax[0].set_title('Loss')
         ax[0].set_ylabel('Loss value')
-        ax[0].set_xlabel('No of batches seen')
+        ax[0].set_xlabel('No of batches seen x{}'.format(config.seval_every))
         ax[0].plot(loss_train, label='Train')
         ax[0].legend()
 
         ax[1].set_title('Accuracy')
         ax[1].set_ylabel('Accuracy value')
-        ax[1].set_xlabel('No of batches seen')
+        ax[1].set_xlabel('No of batches seen x{}'.format(config.seval_every))
         ax[1].plot(accuracy_train, label='Train')
         ax[1].legend()
         
