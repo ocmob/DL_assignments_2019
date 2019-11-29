@@ -17,7 +17,8 @@ conda activate dl
 
 mkdir $TMPDIR/results_kurbanski
 
-PALINDROME_LENGTH=($(seq 10 1 15))
+#PALINDROME_LENGTH=($(seq 10 1 15))
+PALINDROME_LENGTH=(3)
 for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
 	echo "RNN LINEAR"
@@ -32,6 +33,7 @@ do
 done
 
 PALINDROME_LENGTH=(20 30 35 40)
+PALINDROME_LENGTH=(3)
 for LENGTH in "${PALINDROME_LENGTH[@]}"
 do
 	echo "LSTM LINEAR"

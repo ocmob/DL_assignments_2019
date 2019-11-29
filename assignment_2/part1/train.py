@@ -151,7 +151,7 @@ def train(config):
         accuracy = acc(pred, F.one_hot(test_targets, num_classes=config.num_classes).float(), config.num_classes) 
         accuracy_avg += accuracy 
 
-    print(accuracy_avg/iters, end='')
+    print(accuracy_avg/config.avg_over, end='')
 
     if config.train_log != "STDOUT":
         outfile.close()
