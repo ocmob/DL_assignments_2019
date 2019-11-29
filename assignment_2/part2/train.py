@@ -147,8 +147,8 @@ def train(config):
     if config.curves_out_file != None:
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(1, 2, figsize=(10,5))
-        fig.suptitle('Training curves for Pytorch 2-layer LSTM.\nSequence length: {}, Hidden units: {}, LSTM layers: {}, Learning rate: {:.4f}'.format(
-            config.seq_length, config.lstm_num_hidden, config.lstm_num_layers, config.learning_rate))
+        fig.suptitle('Training curves for Pytorch 2-layer LSTM.\nFinal loss: {:.4f}. Final accuracy: {:.4f}\nSequence length: {}, Hidden units: {}, LSTM layers: {}, Learning rate: {:.4f}'.format(
+            loss_train[-1], accuracy_train[-1], config.seq_length, config.lstm_num_hidden, config.lstm_num_layers, config.learning_rate))
         plt.subplots_adjust(top=0.85)
 
         ax[0].set_title('Loss')
@@ -189,13 +189,11 @@ if __name__ == "__main__":
     # It is not necessary to implement the following three params, but it may help training.
     parser.add_argument('--learning_rate_decay', type=float, default=0.96, help='Learning rate decay fraction')
     parser.add_argument('--learning_rate_step', type=int, default=5000, help='Learning rate step')
-    parser.add_argument('--dropout_keep_prob', type=float, default=1.0, help='Dropout keep probability')
 
     parser.add_argument('--train_steps', type=int, default=1000000, help='Number of training steps')
     parser.add_argument('--max_norm', type=float, default=5.0, help='--')
 
     # Misc params
-    parser.add_argument('--summary_path', type=str, default="./summaries/", help='Output path for summaries')
     parser.add_argument('--print_every', type=int, default=5, help='How often to print training progress')
     parser.add_argument('--sample_every', type=int, default=100, help='How often to sample from the model')
 
