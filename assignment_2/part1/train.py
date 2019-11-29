@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
+
 import argparse
 import time
 from datetime import datetime
@@ -26,17 +29,13 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-# TODO WTF?
-#from part1.dataset import PalindromeDataset
-#from part1.vanilla_rnn import VanillaRNN
-#from part1.lstm import LSTM
+from part1.dataset import PalindromeDataset
+from part1.vanilla_rnn import VanillaRNN
+from part1.lstm import LSTM
 
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-from dataset import PalindromeDataset
-from vanilla_rnn import VanillaRNN
-from lstm import LSTM
 
 # You may want to look into tensorboard for logging
 # from torch.utils.tensorboard import SummaryWriter
@@ -67,17 +66,16 @@ def train(config):
         outfile = open(config.train_log, 'w')
 
     accuracy_avg = 0
-    iters = 1
 
-    for i in range(iters):
+    for i in range(config.avg_over):
         # Initialize the model that we are going to use
         if config.model_type == 'RNN':
             model = VanillaRNN(config.input_length, config.input_dim,
-                    config.num_hidden, config.num_classes, device)
-            optimizer = optim.SGD(model.parameters(), config.learning_rate)
+                    config.num_hidden, config.num_classes, device, linear=config.linear)
+            optimizer = optim.RMSprop(model.parameters(), config.learning_rate)
         else:
             model = LSTM(config.input_length, config.input_dim,
-                    config.num_hidden, config.num_classes, device)
+                    config.num_hidden, config.num_classes, device, linear=config.linear)
             optimizer = optim.RMSprop(model.parameters(), config.learning_rate)
 
         model.to(device)
@@ -96,10 +94,14 @@ def train(config):
             optimizer.zero_grad()
             pred = model.forward(batch_inputs)
 
+            loss = criterion(pred, batch_targets)
+            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=config.num_classes).float(), config.num_classes) 
+            loss.backward()
+
             ############################################################################
             # QUESTION: what happens here and why?
             # Gradient clipping is performed. In deep computational graphs the 
-            # parameter gradient could grow very large due to a large number of 
+            # parameter gradient could grow very large due to 
             # repeatedly applying the same operation. If this happens an SGD 
             # update will take a bigger-than-usual step, possibly ending up in a 
             # region where loss function already begins to curve upwards again.
@@ -108,13 +110,9 @@ def train(config):
             # we can take. This will make convergence easier and the optimization 
             # process will be better-behaved than without gradient clipping
             ############################################################################
-            # Clipping moved to AFTER the backward pass
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
             ############################################################################
 
-            loss = criterion(pred, batch_targets)
-            accuracy = acc(pred, F.one_hot(batch_targets, num_classes=config.num_classes).float(), config.num_classes) 
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
             optimizer.step()
 
             # Just for time measurement
@@ -155,6 +153,9 @@ def train(config):
 
     print(accuracy_avg/iters, end='')
 
+    if config.train_log != "STDOUT":
+        outfile.close()
+
 
  ################################################################################
  ################################################################################
@@ -177,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
     parser.add_argument('--linear', action='store_true', help="Make the net linear")
     parser.add_argument('--train_log', type=str, default="STDOUT", help="Output file name")
+    parser.add_argument('--avg_over', type=int, default=1, help="Output file name")
 
     config = parser.parse_args()
 

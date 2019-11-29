@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
+
 import argparse
 import time
 from datetime import datetime
@@ -26,31 +29,27 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-# TODO WTF?
-#from part1.dataset import PalindromeDataset
-#from part1.vanilla_rnn import VanillaRNN
-#from part1.lstm import LSTM
+from part1.dataset import PalindromeDataset
+from part1.vanilla_rnn import VanillaRNN
+from part1.lstm import LSTM
 
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-from dataset import PalindromeDataset
-from vanilla_rnn import VanillaRNN
-from lstm import LSTM
 
 # You may want to look into tensorboard for logging
 # from torch.utils.tensorboard import SummaryWriter
 
 ################################################################################
 
-def acc(predictions, targets):
+def acc(predictions, targets, num_classes):
 
   with torch.no_grad():
-      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=10).float() * targets).sum()/targets.sum()
+      accuracy = (F.one_hot(predictions.max(dim=1).indices, num_classes=num_classes).float() * targets).sum()/targets.sum()
 
   return accuracy.detach().cpu().item()
 
-def get_grads(model, device, data_loader, dataset):
+def get_grads(model, device, data_loader, dataset, num_classes):
     model.to(device)
 
     # Setup the loss and optimizer
@@ -64,7 +63,7 @@ def get_grads(model, device, data_loader, dataset):
     pred = model.forward(batch_inputs)
 
     loss = criterion(pred, batch_targets)
-    accuracy = acc(pred, F.one_hot(batch_targets, num_classes=10).float()) 
+    accuracy = acc(pred, F.one_hot(batch_targets, num_classes=num_classes).float(), num_classes) 
 
     loss.backward()
     
@@ -86,11 +85,11 @@ def train(config):
     # Initialize the model that we are going to use
     model = VanillaRNN(config.input_length, config.input_dim,
             config.num_hidden, config.num_classes, device, True, False)
-    grads_vanilla = get_grads(model, device, data_loader, dataset)
+    grads_vanilla = get_grads(model, device, data_loader, dataset, config.num_classes)
 
     model = LSTM(config.input_length, config.input_dim,
             config.num_hidden, config.num_classes, device, True, False)
-    grads_lstm = get_grads(model, device, data_loader, dataset)
+    grads_lstm = get_grads(model, device, data_loader, dataset, config.num_classes)
 
 
     import matplotlib.pyplot as plt
@@ -113,17 +112,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Model params
-    parser.add_argument('--input_length', type=int, default=10, help='Length of an input sequence')
+    parser.add_argument('--input_length', type=int, default=50, help='Length of an input sequence')
     parser.add_argument('--input_dim', type=int, default=1, help='Dimensionality of input sequence')
     parser.add_argument('--num_classes', type=int, default=10, help='Dimensionality of output sequence')
     parser.add_argument('--num_hidden', type=int, default=128, help='Number of hidden units in the model')
-    parser.add_argument('--batch_size', type=int, default=128, help='Number of examples to process in a batch')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate')
-    parser.add_argument('--train_steps', type=int, default=10000, help='Number of training steps')
-    parser.add_argument('--max_norm', type=float, default=10.0)
-
-    # TODO DELETE ME
-    parser.add_argument('--train_log', type=str, default="STDOUT", help="Output file name")
 
     config = parser.parse_args()
 
