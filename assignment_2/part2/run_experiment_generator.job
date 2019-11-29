@@ -16,6 +16,6 @@ module load Anaconda3/2018.12
 conda activate dl
 
 mkdir $TMPDIR/data
-cp ./assets/book_EN_democracy_in_the_US.txt $TMPDIR/data
+cp ./assets/book_EN_grimms_fairy_tails.txt $TMPDIR/data
 
-python train.py --sample_every 1000000 --print_every 100 --seq_length 150 --txt_file $TMPDIR/data/book_EN_democracy_in_the_US.txt --curves_out_file results/150_training_epochs.jpg --model_out_file models/150_lstm_epochs.out --train_steps 50000
+python train.py --sample_every 1000 --print_every 100 --seq_length 150 --txt_file $TMPDIR/data/book_EN_grimms_fairy_tails.txt --curves_out_file results/150_training_epochs_new.jpg --model_out_file models/150_lstm_epochs_new.out --train_steps 50000 --samples_out_file results/samples_from_150_epochs_new.out

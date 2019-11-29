@@ -121,7 +121,7 @@ def train(config):
                         accuracy, loss
                 ))
 
-            if (epoch*len(data_loader) + step + 1) == 0:
+            if (epoch*len(data_loader) + step + 1) % config.sample_every == 0:
                 with torch.no_grad():
                     codes = []
 
@@ -141,7 +141,7 @@ def train(config):
                     model.reset_stepper()
 
                     if config.samples_out_file != "STDOUT":
-                        samples_out_file.write("Step {}: ".format(step) + string + "\n")
+                        samples_out_file.write("Step {}: ".format(epoch*len(data_loader) + step + 1) + string + "\n")
                     else:
                         print(string)
 
@@ -150,7 +150,7 @@ def train(config):
         samples_out_file.close()
 
     if config.model_out_file != None:
-        torch.save(model.state_dict(), config.model_out_file)
+        torch.save(model, config.model_out_file)
         
     if config.curves_out_file != None:
         import matplotlib.pyplot as plt
