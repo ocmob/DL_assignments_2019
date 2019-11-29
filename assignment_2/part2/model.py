@@ -35,11 +35,11 @@ class TextGenerationModel(nn.Module):
                 batch_first=True).to(device)
         self.linear=nn.Linear(lstm_num_hidden, vocabulary_size).to(device)
 
-    def forward(self, x):
-        lstmout, _ = self.lstm(x, None)
+    def forward(self, x, hid_in=None):
+        lstmout, hid_out = self.lstm(x, hid_in)
         out = self.linear(lstmout)
 
-        return out
+        return out, hid_out
 
     def reset_stepper(self):
         self.stepper = 0

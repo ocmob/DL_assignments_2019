@@ -95,7 +95,7 @@ def train(config):
 
             optimizer.zero_grad()
 
-            pred = model.forward(batch_inputs)
+            pred, _ = model.forward(batch_inputs)
             loss = criterion(pred.transpose(2, 1), batch_targets)
             accuracy = acc(pred.transpose(2, 1), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
             loss.backward()
