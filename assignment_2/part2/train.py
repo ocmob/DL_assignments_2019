@@ -64,6 +64,12 @@ def train(config):
     optimizer = optim.RMSprop(model.parameters(), config.learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=config.learning_rate_step, gamma=config.learning_rate_decay)
 
+    accuracy_train = []
+    loss_train = []
+
+    if config.samples_out_file != "STDOUT":
+        samples_out_file = open(config.samples_out_file, 'w')
+
     for step, (batch_inputs, batch_targets) in enumerate(data_loader):
 
         model.zero_grad()
@@ -77,16 +83,15 @@ def train(config):
         batch_targets = batch_targets.to(device)
 
         optimizer.zero_grad()
-        pred = model.forward(batch_inputs)
-        #SHOW THIS
-        #loss = criterion(pred.view(-1, 84, 30), batch_targets)
 
+        pred = model.forward(batch_inputs)
         loss = criterion(pred.transpose(2, 1), batch_targets)
         accuracy = acc(pred.transpose(2, 1), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
-
-        #SHOW THIS
-        #accuracy = acc(pred.view(-1, 84, 30), F.one_hot(batch_targets, num_classes=dataset.vocab_size).float(), dataset.vocab_size) 
         loss.backward()
+
+        accuracy_train.append(accuracy)
+        loss_train.append(loss.item())
+
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_norm)
         optimizer.step()
 
@@ -119,14 +124,46 @@ def train(config):
                     input_tensor *= 0
                     input_tensor[0, 0, code] = 1
                     codes.append(code)
+
                 string = dataset.convert_to_string(codes)
                 model.reset_stepper()
-                print(string)
+
+                if config.samples_out_file != "STDOUT":
+                    samples_out_file.write("Step {}: ".format(step) + string + "\n")
+                else:
+                    print(string)
 
         if step == config.train_steps:
             # If you receive a PyTorch data-loader error, check this bug report:
             # https://github.com/pytorch/pytorch/pull/9655
             break
+
+    if config.samples_out_file != "STDOUT":
+        samples_out_file.close()
+
+    if config.model_out_file != None:
+        torch.save(model.state_dict(), config.model_out_file)
+        
+    if config.curves_out_file != None:
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(1, 2, figsize=(10,5))
+        fig.suptitle('Training curves for Pytorch 2-layer LSTM.\nSequence length: {}, Hidden units: {}, LSTM layers: {}, Learning rate: {:.4f}'.format(
+            config.seq_length, config.lstm_num_hidden, config.lstm_num_layers, config.learning_rate))
+        plt.subplots_adjust(top=0.85)
+
+        ax[0].set_title('Loss')
+        ax[0].set_ylabel('Loss value')
+        ax[0].set_xlabel('No of batches seen')
+        ax[0].plot(loss_train, label='Train')
+        ax[0].legend()
+
+        ax[1].set_title('Accuracy')
+        ax[1].set_ylabel('Accuracy value')
+        ax[1].set_xlabel('No of batches seen')
+        ax[1].plot(accuracy_train, label='Train')
+        ax[1].legend()
+        
+        plt.savefig(config.curves_out_file)
 
     print('Done training.')
 
@@ -162,9 +199,12 @@ if __name__ == "__main__":
     parser.add_argument('--print_every', type=int, default=5, help='How often to print training progress')
     parser.add_argument('--sample_every', type=int, default=100, help='How often to sample from the model')
 
-    # TODO I ADDED
     parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
     parser.add_argument('--temp', type=float, default=1.0, help="Temperature parameter for random sampling")
+
+    parser.add_argument('--samples_out_file', type=str, default="STDOUT", help="Output file with a train model. Default: print to STDOUT")
+    parser.add_argument('--model_out_file', type=str, default=None, help="Output file with a train model. Default: do not save")
+    parser.add_argument('--curves_out_file', type=str, default=None, help="Output file with training curve plots. Default: do not save")
 
     config = parser.parse_args()
 
