@@ -7,14 +7,12 @@ from torchvision.utils import make_grid
 
 from datasets.bmnist import bmnist
 
-TEST_MODE = False
-
 class Encoder(nn.Module):
 
     def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28):
         super().__init__()
         self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
-        self.hid_act = torch.nn.Tanh()
+        self.hid_act = torch.nn.ReLU()
         self.sigma_lin = torch.nn.Linear(hidden_dim, z_dim)
         self.mu_lin = torch.nn.Linear(hidden_dim, z_dim)
 
@@ -41,7 +39,7 @@ class Decoder(nn.Module):
     def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28):
         super().__init__()
         self.hid_lin = torch.nn.Linear(z_dim, hidden_dim)
-        self.hid_act = torch.nn.Tanh()
+        self.hid_act = torch.nn.ReLU()
         self.out_lin = torch.nn.Linear(hidden_dim, data_dim)
         self.out_act = torch.nn.Sigmoid()
 
@@ -116,7 +114,7 @@ def epoch_iter(model, data, optimizer):
     """
     
     average_epoch_elbo = 0
-    if TEST_MODE:
+    if ARGS.t:
         dataiter = iter(data)
         for i in range(5):
             images = next(dataiter)
@@ -172,12 +170,13 @@ def save_elbo_plot(train_curve, val_curve, filename):
 
 
 def main():
-    if TEST_MODE:
+    if ARGS.t:
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
         data = bmnist()[:2]  # ignore test split
     model = VAE(z_dim=ARGS.zdim)
     optimizer = torch.optim.Adam(model.parameters())
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 40)
 
     train_curve, val_curve = [], []
     for epoch in range(ARGS.epochs):
@@ -186,12 +185,14 @@ def main():
         train_curve.append(train_elbo)
         val_curve.append(val_elbo)
         print(f"[Epoch {epoch}] train elbo: {train_elbo} val_elbo: {val_elbo}")
+        scheduler.step()
 
         # --------------------------------------------------------------------
         #  Add functionality to plot samples from model during training.
         #  You can use the make_grid functioanlity that is already imported.
         # --------------------------------------------------------------------
-        if (epoch % 5) == 0:
+        if ((epoch+1) % 5) == 0:
+            print("[Epoch {}], current learning rate: {}".format(epoch,optimizer.state_dict()['param_groups'][0]['lr']))
             imgs, img_means = model.sample(10)
             grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
             import matplotlib.pyplot as plt
@@ -215,6 +216,8 @@ if __name__ == "__main__":
                         help='max number of epochs')
     parser.add_argument('--zdim', default=20, type=int,
                         help='dimensionality of latent space')
+    parser.add_argument('-t', action='store_true',
+                        help='run in test mode')
 
     ARGS = parser.parse_args()
 
