@@ -65,6 +65,7 @@ class VAE(nn.Module):
         self.z_dim = z_dim
         self.encoder = Encoder(hidden_dim, z_dim)
         self.decoder = Decoder(hidden_dim, z_dim)
+        self.eps = 1e-10
 
     def forward(self, input):
         """
@@ -81,7 +82,7 @@ class VAE(nn.Module):
         mu_out = self.decoder.forward(z)
 
         kl = -1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim=1)
-        logp = -(input*torch.log(mu_out) + (1-input)*torch.log(1-mu_out)).sum(dim=1)
+        logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
 
         # TODO NEGATIVE?
         average_negative_elbo = (kl+logp).mean()
@@ -152,7 +153,7 @@ def run_epoch(model, data, optimizer):
     train_elbo = epoch_iter(model, traindata, optimizer)
 
     model.eval()
-    #TODO nograd
+        #TODO nograd
     val_elbo = epoch_iter(model, valdata, optimizer)
 
     return train_elbo, val_elbo
@@ -176,7 +177,7 @@ def main():
         data = bmnist()[:2]  # ignore test split
     model = VAE(z_dim=ARGS.zdim)
     optimizer = torch.optim.Adam(model.parameters())
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 40)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 80)
 
     train_curve, val_curve = [], []
     for epoch in range(ARGS.epochs):
