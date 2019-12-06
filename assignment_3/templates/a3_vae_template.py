@@ -10,8 +10,13 @@ from datasets.bmnist import bmnist
 
 class Encoder(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20):
+    def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28):
         super().__init__()
+        self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
+        self.hid_act = torch.nn.Tanh()
+        self.sigma_lin = torch.nn.Linear(hidden_dim, z_dim)
+        self.mu_lin = torch.nn.Linear(hidden_dim, z_dim)
+
 
     def forward(self, input):
         """
@@ -20,16 +25,24 @@ class Encoder(nn.Module):
         Returns mean and std with shape [batch_size, z_dim]. Make sure
         that any constraints are enforced.
         """
-        mean, std = None, None
-        raise NotImplementedError()
+
+        # TODO CONSTRAINTS?
+        x = self.hid_lin.forward(input)
+        x = self.hid_act.forward(x)
+        mean = self.mu_lin.forward(x)
+        std = self.sigma_lin.forward(x)
 
         return mean, std
 
 
 class Decoder(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20):
+    def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28):
         super().__init__()
+        self.hid_lin = torch.nn.Linear(z_dim, hidden_dim)
+        self.hid_act = torch.nn.Tanh()
+        self.out_lin = torch.nn.Linear(hidden_dim, data_dim)
+        self.out_act = torch.nn.Sigmoid()
 
     def forward(self, input):
         """
@@ -37,8 +50,10 @@ class Decoder(nn.Module):
 
         Returns mean with shape [batch_size, 784].
         """
-        mean = None
-        raise NotImplementedError()
+        x = self.hid_lin.forward(input)
+        x = self.hid_act.forward(x)
+        x = self.out_lin.forward(x)
+        mean = self.out_act.forward(x)
 
         return mean
 
@@ -57,8 +72,21 @@ class VAE(nn.Module):
         Given input, perform an encoding and decoding step and return the
         negative average elbo for the given batch.
         """
-        average_negative_elbo = None
-        raise NotImplementedError()
+
+        # TODO ANY LOG TRICKS HERE?
+        mu, logsig = self.encoder.forward(input)
+        sample = torch.normal(torch.zeros_like(mu), 
+                torch.ones_like(logsig))
+
+        z = mu + torch.sqrt(torch.exp(logsig))*sample
+        mu_out = self.decoder.forward(z)
+
+        kl = -1/2*(1+logsig-mu-torch.exp(logsig)).sum(dim=1)
+        logp = (input*torch.log(mu_out) + (1-input)*torch.log(1-mu_out)).sum(dim=1)
+
+        # TODO NEGATIVE?
+        average_negative_elbo = -(-kl+logp).mean()
+
         return average_negative_elbo
 
     def sample(self, n_samples):
@@ -67,9 +95,14 @@ class VAE(nn.Module):
         (from bernoulli) and the means for these bernoullis (as these are
         used to plot the data manifold).
         """
-        sampled_ims, im_means = None, None
-        raise NotImplementedError()
 
+        with torch.no_grad():
+            samples = torch.normal(torch.zeros(n_samples, self.z_dim), 
+                    torch.ones(n_samples, self.z_dim))
+
+            im_means = self.decoder.forward(samples)
+            sampled_ims = torch.bernoulli(im_means)
+        
         return sampled_ims, im_means
 
 
@@ -80,8 +113,19 @@ def epoch_iter(model, data, optimizer):
 
     Returns the average elbo for the complete epoch.
     """
-    average_epoch_elbo = None
-    raise NotImplementedError()
+    
+    average_epoch_elbo = 0
+    for i, images in enumerate(data):
+        optimizer.zero_grad()
+        elbo_iter = model.forward(images.view(128,-1))
+        if not elbo_iter.requires_grad:
+            breakpoint()
+        elbo_iter.backward()
+        average_epoch_elbo += elbo_iter.item()
+        del elbo_iter
+        optimizer.step()
+
+    average_epoch_elbo /= i+1
 
     return average_epoch_elbo
 
@@ -96,6 +140,7 @@ def run_epoch(model, data, optimizer):
     train_elbo = epoch_iter(model, traindata, optimizer)
 
     model.eval()
+    #TODO nograd
     val_elbo = epoch_iter(model, valdata, optimizer)
 
     return train_elbo, val_elbo
@@ -129,6 +174,13 @@ def main():
         #  Add functionality to plot samples from model during training.
         #  You can use the make_grid functioanlity that is already imported.
         # --------------------------------------------------------------------
+        imgs, img_means = model.sample(10)
+        grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
+        import matplotlib.pyplot as plt
+        plt.imshow(grid.permute(2, 1, 0).numpy())
+        plt.title("Samples epoch = ", epoch)
+        plt.savefig("samples_epoch_{}.pdf".format(epoch))
+
 
     # --------------------------------------------------------------------
     #  Add functionality to plot plot the learned data manifold after
