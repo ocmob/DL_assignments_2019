@@ -13,8 +13,9 @@ class Encoder(nn.Module):
         super().__init__()
         self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
         self.hid_act = torch.nn.ReLU()
+        self.deep = deep
 
-        if deep:
+        if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
             self.deep_act = torch.nn.ReLU()
 
@@ -34,7 +35,7 @@ class Encoder(nn.Module):
         x = self.hid_lin.forward(input)
         x = self.hid_act.forward(x)
 
-        if deep:
+        if self.deep:
             x = self.deep_lin.forward(x)
             x = self.deep_act.forward(x)
 
@@ -50,8 +51,9 @@ class Decoder(nn.Module):
         super().__init__()
         self.hid_lin = torch.nn.Linear(z_dim, hidden_dim)
         self.hid_act = torch.nn.ReLU()
+        self.deep = deep
 
-        if deep:
+        if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
             self.deep_act = torch.nn.ReLU()
 
@@ -67,7 +69,7 @@ class Decoder(nn.Module):
         x = self.hid_lin.forward(input)
         x = self.hid_act.forward(x)
 
-        if deep:
+        if self.deep:
             x = self.deep_lin.forward(x)
             x = self.deep_act.forward(x)
 
@@ -84,8 +86,8 @@ class VAE(nn.Module):
 
         self.z_dim = z_dim
 
-        self.encoder = Encoder(hidden_dim, z_dim, deep)
-        self.decoder = Decoder(hidden_dim, z_dim, deep)
+        self.encoder = Encoder(hidden_dim, z_dim, deep=deep)
+        self.decoder = Decoder(hidden_dim, z_dim, deep=deep)
         self.eps = 1e-10
 
     def forward(self, input):
@@ -196,7 +198,7 @@ def main():
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
         data = bmnist()[:2]  # ignore test split
-    model = VAE(z_dim=ARGS.zdim, True)
+    model = VAE(z_dim=ARGS.zdim, deep=True)
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 80)
 
@@ -232,7 +234,8 @@ def main():
     #  functionality that is already imported.
     # --------------------------------------------------------------------
 
-    save_elbo_plot(train_curve, val_curve, 'elbo.pdf')
+    if not ARGS.t:
+        save_elbo_plot(train_curve, val_curve, 'elbo.pdf')
 
 
 if __name__ == "__main__":
