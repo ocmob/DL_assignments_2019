@@ -81,7 +81,7 @@ class Decoder(nn.Module):
 
 class VAE(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20, deep=False):
+    def __init__(self, hidden_dim=500, z_dim=20, deep=False, device=torch.device('cpu')):
         super().__init__()
 
         self.z_dim = z_dim
@@ -89,6 +89,7 @@ class VAE(nn.Module):
         self.encoder = Encoder(hidden_dim, z_dim, deep=deep)
         self.decoder = Decoder(hidden_dim, z_dim, deep=deep)
         self.eps = 1e-10
+        self.device = device
 
     def forward(self, input):
         """
@@ -120,11 +121,11 @@ class VAE(nn.Module):
         """
 
         with torch.no_grad():
-            samples = torch.normal(torch.zeros(n_samples, self.z_dim), 
-                    torch.ones(n_samples, self.z_dim))
+            samples = torch.normal(torch.zeros(n_samples, self.z_dim, device=self.device), 
+                    torch.ones(n_samples, self.z_dim, device=self.device)).to(self.device)
 
             im_means = self.decoder.forward(samples)
-            sampled_ims = torch.bernoulli(im_means)
+            sampled_ims = torch.bernoulli(im_means).to(self.device)
         
         return sampled_ims, im_means
 
@@ -198,9 +199,9 @@ def main():
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
         data = bmnist()[:2]  # ignore test split
-    model = VAE(z_dim=ARGS.zdim, deep=True)
+    model = VAE(z_dim=ARGS.zdim, deep=True, device=device)
     optimizer = torch.optim.Adam(model.parameters())
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 80)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, ARGS.epochs+20)
 
     train_curve, val_curve = [], []
     for epoch in range(ARGS.epochs):
@@ -220,7 +221,7 @@ def main():
             imgs, img_means = model.sample(10)
             grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
             import matplotlib.pyplot as plt
-            plt.imshow(grid.permute(2, 1, 0).numpy())
+            plt.imshow(grid.T.permute(2, 1, 0).cpu().numpy())
             plt.title("Samples epoch = {}".format(epoch+1))
             if ARGS.t:
                 plt.savefig("./results/test_epoch_{}.pdf".format(epoch+1))
