@@ -220,7 +220,10 @@ def main():
             import matplotlib.pyplot as plt
             plt.imshow(grid.permute(2, 1, 0).numpy())
             plt.title("Samples epoch = {}".format(epoch+1))
-            plt.savefig("./results/samples_epoch_{}.pdf".format(epoch+1))
+            if ARGS.t:
+                plt.savefig("./results/test_epoch_{}.pdf".format(epoch+1))
+            else:
+                plt.savefig("./results/samples_epoch_{}.pdf".format(epoch+1))
 
 
     # --------------------------------------------------------------------
