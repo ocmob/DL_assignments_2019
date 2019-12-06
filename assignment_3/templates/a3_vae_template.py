@@ -117,7 +117,7 @@ def epoch_iter(model, data, optimizer):
     average_epoch_elbo = 0
     for i, images in enumerate(data):
         optimizer.zero_grad()
-        elbo_iter = model.forward(images.view(128,-1))
+        elbo_iter = model.forward(images.view(images.shape[0],-1))
         if not elbo_iter.requires_grad:
             breakpoint()
         elbo_iter.backward()
@@ -178,7 +178,7 @@ def main():
         grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
         import matplotlib.pyplot as plt
         plt.imshow(grid.permute(2, 1, 0).numpy())
-        plt.title("Samples epoch = ", epoch)
+        plt.title("Samples epoch = {}".format(epoch))
         plt.savefig("samples_epoch_{}.pdf".format(epoch))
 
 
