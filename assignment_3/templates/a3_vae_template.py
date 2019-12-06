@@ -9,10 +9,15 @@ from datasets.bmnist import bmnist
 
 class Encoder(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28):
+    def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28, deep=False):
         super().__init__()
         self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
         self.hid_act = torch.nn.ReLU()
+
+        if deep:
+            self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
+            self.deep_act = torch.nn.ReLU()
+
         self.sigma_lin = torch.nn.Linear(hidden_dim, z_dim)
         self.mu_lin = torch.nn.Linear(hidden_dim, z_dim)
 
@@ -28,6 +33,11 @@ class Encoder(nn.Module):
         # TODO CONSTRAINTS?
         x = self.hid_lin.forward(input)
         x = self.hid_act.forward(x)
+
+        if deep:
+            x = self.deep_lin.forward(x)
+            x = self.deep_act.forward(x)
+
         mean = self.mu_lin.forward(x)
         std = self.sigma_lin.forward(x)
 
@@ -36,10 +46,15 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28):
+    def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28, deep=False):
         super().__init__()
         self.hid_lin = torch.nn.Linear(z_dim, hidden_dim)
         self.hid_act = torch.nn.ReLU()
+
+        if deep:
+            self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
+            self.deep_act = torch.nn.ReLU()
+
         self.out_lin = torch.nn.Linear(hidden_dim, data_dim)
         self.out_act = torch.nn.Sigmoid()
 
@@ -51,6 +66,11 @@ class Decoder(nn.Module):
         """
         x = self.hid_lin.forward(input)
         x = self.hid_act.forward(x)
+
+        if deep:
+            x = self.deep_lin.forward(x)
+            x = self.deep_act.forward(x)
+
         x = self.out_lin.forward(x)
         mean = self.out_act.forward(x)
 
@@ -59,12 +79,12 @@ class Decoder(nn.Module):
 
 class VAE(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20):
+    def __init__(self, hidden_dim=500, z_dim=20, deep=False):
         super().__init__()
 
         self.z_dim = z_dim
-        self.encoder = Encoder(hidden_dim, z_dim)
-        self.decoder = Decoder(hidden_dim, z_dim)
+        self.encoder = Encoder(hidden_dim, z_dim, deep)
+        self.decoder = Decoder(hidden_dim, z_dim, deep)
 
     def forward(self, input):
         """
@@ -174,7 +194,7 @@ def main():
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
         data = bmnist()[:2]  # ignore test split
-    model = VAE(z_dim=ARGS.zdim)
+    model = VAE(z_dim=ARGS.zdim, True)
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 40)
 
