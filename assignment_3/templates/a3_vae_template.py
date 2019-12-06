@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
+from scipy.stats import norm
+import numpy as np
 
 from datasets.bmnist import bmnist
 
@@ -127,7 +129,20 @@ class VAE(nn.Module):
             im_means = self.decoder.forward(samples)
             sampled_ims = torch.bernoulli(im_means).to(self.device)
         
-        return sampled_ims, im_means
+        return sampled_ims.cpu(), im_means.cpu()
+
+    def get_latent(self, grid_size):
+
+        grid = np.mgrid[0.01:0.99:grid_size*1j, 0.01:0.99:grid_size*1j].transpose(1, 2, 0).reshape(-1, 2)
+        samples_np = norm.ppf(grid)
+
+        with torch.no_grad():
+            samples = torch.from_numpy(samples_np).to(self.device).float()
+            im_means = self.decoder.forward(samples)
+
+        return im_means.cpu()
+
+
 
 
 def epoch_iter(model, data, optimizer, device=torch.device('cpu')):
@@ -219,15 +234,21 @@ def main():
         if ((epoch+1) % 5) == 0:
             print("[Epoch {}], current learning rate: {}".format(epoch,optimizer.state_dict()['param_groups'][0]['lr']))
             imgs, img_means = model.sample(10)
-            grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
-            import matplotlib.pyplot as plt
-            plt.imshow(grid.T.permute(2, 1, 0).cpu().numpy())
-            plt.title("Samples epoch = {}".format(epoch+1))
+            grid = make_grid(imgs.view(10, 1, 28, -1).permute(0, 1, 3, 2), nrow = 2)
+            plt.imshow(grid.permute(2, 1, 0).numpy())
+            plt.title("Samples from VAE, 20-D latent space, epoch = {}".format(epoch+1))
             if ARGS.t:
                 plt.savefig("./results/test_epoch_{}.pdf".format(epoch+1))
             else:
                 plt.savefig("./results/samples_epoch_{}.pdf".format(epoch+1))
 
+    if ARGS.zdim == 2:
+        means = model.get_latent(20)
+        grid = make_grid(means.view(400, 1, 28, -1).permute(0, 1, 3, 2), nrow = 20)
+        plt.figure(figsize=(12,12))
+        plt.imshow(grid.permute(2, 1, 0).numpy())
+        plt.title("Learned MNIST manifold")
+        plt.savefig("./results/mnist_manifold.pdf".format(epoch+1))
 
     # --------------------------------------------------------------------
     #  Add functionality to plot plot the learned data manifold after
