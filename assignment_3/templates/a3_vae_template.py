@@ -127,7 +127,7 @@ class VAE(nn.Module):
         return sampled_ims, im_means
 
 
-def epoch_iter(model, data, optimizer):
+def epoch_iter(model, data, optimizer, device=torch.device('cpu')):
     """
     Perform a single epoch for either the training or validation.
     use model.training to determine if in 'training mode' or not.
@@ -136,27 +136,24 @@ def epoch_iter(model, data, optimizer):
     """
     
     average_epoch_elbo = 0
+    model.to(device)
+
     if ARGS.t:
         dataiter = iter(data)
         for i in range(5):
-            images = next(dataiter)
+            images = next(dataiter).to(device)
             optimizer.zero_grad()
             elbo_iter = model.forward(images.view(images.shape[0],-1))
-            if not elbo_iter.requires_grad:
-                breakpoint()
             elbo_iter.backward()
-            average_epoch_elbo += elbo_iter.item()
-            del elbo_iter
+            average_epoch_elbo += elbo_iter.cpu().item()
             optimizer.step()
     else:
         for i, images in enumerate(data):
+            images = images.to(device)
             optimizer.zero_grad()
             elbo_iter = model.forward(images.view(images.shape[0],-1))
-            if not elbo_iter.requires_grad:
-                breakpoint()
             elbo_iter.backward()
-            average_epoch_elbo += elbo_iter.item()
-            del elbo_iter
+            average_epoch_elbo += elbo_iter.cpu().item()
             optimizer.step()
 
     average_epoch_elbo /= i+1
@@ -164,18 +161,18 @@ def epoch_iter(model, data, optimizer):
     return average_epoch_elbo
 
 
-def run_epoch(model, data, optimizer):
+def run_epoch(model, data, optimizer, device=torch.device('cpu')):
     """
     Run a train and validation epoch and return average elbo for each.
     """
     traindata, valdata = data
 
     model.train()
-    train_elbo = epoch_iter(model, traindata, optimizer)
+    train_elbo = epoch_iter(model, traindata, optimizer, device)
 
     model.eval()
         #TODO nograd
-    val_elbo = epoch_iter(model, valdata, optimizer)
+    val_elbo = epoch_iter(model, valdata, optimizer, device)
 
     return train_elbo, val_elbo
 
@@ -192,6 +189,9 @@ def save_elbo_plot(train_curve, val_curve, filename):
 
 
 def main():
+
+    device = torch.device(ARGS.device)
+
     if ARGS.t:
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
@@ -202,7 +202,7 @@ def main():
 
     train_curve, val_curve = [], []
     for epoch in range(ARGS.epochs):
-        elbos = run_epoch(model, data, optimizer)
+        elbos = run_epoch(model, data, optimizer, device)
         train_elbo, val_elbo = elbos
         train_curve.append(train_elbo)
         val_curve.append(val_elbo)
@@ -241,6 +241,7 @@ if __name__ == "__main__":
                         help='max number of epochs')
     parser.add_argument('--zdim', default=20, type=int,
                         help='dimensionality of latent space')
+    parser.add_argument('--device', type=str, default="cuda:0", help="Training device 'cpu' or 'cuda:0'")
     parser.add_argument('-t', action='store_true',
                         help='run in test mode')
 
