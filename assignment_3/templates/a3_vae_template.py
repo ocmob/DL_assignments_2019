@@ -196,7 +196,7 @@ def main():
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
         data = bmnist()[:2]  # ignore test split
-    model = VAE(z_dim=ARGS.zdim, True)
+    model = VAE(z_dim=ARGS.zdim, deep=True)
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 80)
 
