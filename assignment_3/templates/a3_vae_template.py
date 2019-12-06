@@ -81,11 +81,11 @@ class VAE(nn.Module):
         z = mu + torch.sqrt(torch.exp(logsig))*sample
         mu_out = self.decoder.forward(z)
 
-        kl = -1/2*(1+logsig-mu-torch.exp(logsig)).sum(dim=1)
-        logp = (input*torch.log(mu_out) + (1-input)*torch.log(1-mu_out)).sum(dim=1)
+        kl = 1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim=1)
+        logp = -(input*torch.log(mu_out) + (1-input)*torch.log(1-mu_out)).sum(dim=1)
 
         # TODO NEGATIVE?
-        average_negative_elbo = -(-kl+logp).mean()
+        average_negative_elbo = (kl+logp).mean()
 
         return average_negative_elbo
 
