@@ -7,6 +7,7 @@ from torchvision.utils import make_grid
 
 from datasets.bmnist import bmnist
 
+TEST_MODE = False
 
 class Encoder(nn.Module):
 
@@ -81,7 +82,7 @@ class VAE(nn.Module):
         z = mu + torch.sqrt(torch.exp(logsig))*sample
         mu_out = self.decoder.forward(z)
 
-        kl = 1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim=1)
+        kl = -1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim=1)
         logp = -(input*torch.log(mu_out) + (1-input)*torch.log(1-mu_out)).sum(dim=1)
 
         # TODO NEGATIVE?
@@ -115,15 +116,28 @@ def epoch_iter(model, data, optimizer):
     """
     
     average_epoch_elbo = 0
-    for i, images in enumerate(data):
-        optimizer.zero_grad()
-        elbo_iter = model.forward(images.view(images.shape[0],-1))
-        if not elbo_iter.requires_grad:
-            breakpoint()
-        elbo_iter.backward()
-        average_epoch_elbo += elbo_iter.item()
-        del elbo_iter
-        optimizer.step()
+    if TEST_MODE:
+        dataiter = iter(data)
+        for i in range(5):
+            images = next(dataiter)
+            optimizer.zero_grad()
+            elbo_iter = model.forward(images.view(images.shape[0],-1))
+            if not elbo_iter.requires_grad:
+                breakpoint()
+            elbo_iter.backward()
+            average_epoch_elbo += elbo_iter.item()
+            del elbo_iter
+            optimizer.step()
+    else:
+        for i, images in enumerate(data):
+            optimizer.zero_grad()
+            elbo_iter = model.forward(images.view(images.shape[0],-1))
+            if not elbo_iter.requires_grad:
+                breakpoint()
+            elbo_iter.backward()
+            average_epoch_elbo += elbo_iter.item()
+            del elbo_iter
+            optimizer.step()
 
     average_epoch_elbo /= i+1
 
@@ -158,7 +172,10 @@ def save_elbo_plot(train_curve, val_curve, filename):
 
 
 def main():
-    data = bmnist()[:2]  # ignore test split
+    if TEST_MODE:
+        data = bmnist(batch_size=1)[:2]  # ignore test split
+    else:
+        data = bmnist()[:2]  # ignore test split
     model = VAE(z_dim=ARGS.zdim)
     optimizer = torch.optim.Adam(model.parameters())
 
@@ -174,12 +191,13 @@ def main():
         #  Add functionality to plot samples from model during training.
         #  You can use the make_grid functioanlity that is already imported.
         # --------------------------------------------------------------------
-        imgs, img_means = model.sample(10)
-        grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
-        import matplotlib.pyplot as plt
-        plt.imshow(grid.permute(2, 1, 0).numpy())
-        plt.title("Samples epoch = {}".format(epoch))
-        plt.savefig("samples_epoch_{}.pdf".format(epoch))
+        if (epoch % 5) == 0:
+            imgs, img_means = model.sample(10)
+            grid = make_grid(imgs.view(10, 1, 28, -1), nrow = 2)
+            import matplotlib.pyplot as plt
+            plt.imshow(grid.permute(2, 1, 0).numpy())
+            plt.title("Samples epoch = {}".format(epoch+1))
+            plt.savefig("./results/samples_epoch_{}.pdf".format(epoch+1))
 
 
     # --------------------------------------------------------------------
