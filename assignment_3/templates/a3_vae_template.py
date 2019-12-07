@@ -88,8 +88,8 @@ class VAE(nn.Module):
 
         self.z_dim = z_dim
 
-        self.encoder = Encoder(hidden_dim, z_dim, deep=deep)
-        self.decoder = Decoder(hidden_dim, z_dim, deep=deep)
+        self.encoder = Encoder(hidden_dim, z_dim, deep=deep).to(device)
+        self.decoder = Decoder(hidden_dim, z_dim, deep=deep).to(device)
         self.eps = 1e-10
         self.device = device
 
@@ -99,7 +99,6 @@ class VAE(nn.Module):
         negative average elbo for the given batch.
         """
 
-        # TODO ANY LOG TRICKS HERE?
         mu, logsig = self.encoder.forward(input)
         sample = torch.normal(torch.zeros_like(mu), 
                 torch.ones_like(logsig))
@@ -110,7 +109,6 @@ class VAE(nn.Module):
         kl = -1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim=1)
         logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
 
-        # TODO NEGATIVE?
         average_negative_elbo = (kl+logp).mean()
 
         return average_negative_elbo
@@ -145,7 +143,7 @@ class VAE(nn.Module):
 
 
 
-def epoch_iter(model, data, optimizer, device=torch.device('cpu')):
+def epoch_iter(model, data, optimizer, device=torch.device('cpu'), cv=False):
     """
     Perform a single epoch for either the training or validation.
     use model.training to determine if in 'training mode' or not.
@@ -154,25 +152,38 @@ def epoch_iter(model, data, optimizer, device=torch.device('cpu')):
     """
     
     average_epoch_elbo = 0
-    model.to(device)
 
-    if ARGS.t:
-        dataiter = iter(data)
-        for i in range(5):
-            images = next(dataiter).to(device)
-            optimizer.zero_grad()
-            elbo_iter = model.forward(images.view(images.shape[0],-1))
-            elbo_iter.backward()
-            average_epoch_elbo += elbo_iter.cpu().item()
-            optimizer.step()
+    if cv:
+        with torch.no_grad():
+            if ARGS.t:
+                dataiter = iter(data)
+                for i in range(5):
+                    images = next(dataiter).to(device)
+                    elbo_iter = model.forward(images.view(images.shape[0],-1))
+                    average_epoch_elbo += elbo_iter.cpu().item()
+            else:
+                for i, images in enumerate(data):
+                    images = images.to(device)
+                    elbo_iter = model.forward(images.view(images.shape[0],-1))
+                    average_epoch_elbo += elbo_iter.cpu().item()
     else:
-        for i, images in enumerate(data):
-            images = images.to(device)
-            optimizer.zero_grad()
-            elbo_iter = model.forward(images.view(images.shape[0],-1))
-            elbo_iter.backward()
-            average_epoch_elbo += elbo_iter.cpu().item()
-            optimizer.step()
+        if ARGS.t:
+            dataiter = iter(data)
+            for i in range(5):
+                images = next(dataiter).to(device)
+                optimizer.zero_grad()
+                elbo_iter = model.forward(images.view(images.shape[0],-1))
+                elbo_iter.backward()
+                average_epoch_elbo += elbo_iter.cpu().item()
+                optimizer.step()
+        else:
+            for i, images in enumerate(data):
+                images = images.to(device)
+                optimizer.zero_grad()
+                elbo_iter = model.forward(images.view(images.shape[0],-1))
+                elbo_iter.backward()
+                average_epoch_elbo += elbo_iter.cpu().item()
+                optimizer.step()
 
     average_epoch_elbo /= i+1
 
@@ -189,8 +200,7 @@ def run_epoch(model, data, optimizer, device=torch.device('cpu')):
     train_elbo = epoch_iter(model, traindata, optimizer, device)
 
     model.eval()
-        #TODO nograd
-    val_elbo = epoch_iter(model, valdata, optimizer, device)
+    val_elbo = epoch_iter(model, valdata, optimizer, device, cv=True)
 
     return train_elbo, val_elbo
 
@@ -224,6 +234,8 @@ def main():
     else:
         data = bmnist()[:2]  # ignore test split
     model = VAE(z_dim=ARGS.zdim, deep=True, device=device)
+    model.to(device)
+
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, ARGS.epochs+20)
 
