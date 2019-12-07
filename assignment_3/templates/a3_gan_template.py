@@ -181,13 +181,13 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                 batches_done = epoch * len(dataloader) + i
                 #if batches_done % args.save_interval == 0:
         with torch.no_grad():
-            NO_IMAGES = 20
+            NO_IMAGES = 25
             zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
                     torch.ones(NO_IMAGES, latent_dim)).to(device)
             fakebatch = generator(zbatch)
             grid = make_grid(
                     fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                    nrow = 5)
+                    nrow = 4)
             plt.imshow(grid.permute(2, 1, 0).numpy())
             plt.title('Sample generated image, epoch {}'.format(epoch))
             plt.savefig('{}/epoch_{}_batch_{}.png'.format(img_dir, 
@@ -200,8 +200,8 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
         g_loss /= (i+1)*g_steps
         d_loss /= (i+1)*d_steps
 
-        print("[Epoch {epoch}] D-loss: {d_loss}, G-loss: {g_loss}, LR: {}".format(
-            optimizer_D.state_dict()['param_groups'][0]['lr']))
+        print("[Epoch {}] D-loss: {}, G-loss: {}, LR: {}".format( epoch, d_loss,
+            g_loss, optimizer_D.state_dict()['param_groups'][0]['lr']))
 
 
 def main():
@@ -232,10 +232,10 @@ def main():
     discriminator = Discriminator(args.latent_dim).to(device)
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lr)
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=args.lr)
-    scheduler_G = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
-            args.epochs+20)
-    scheduler_D = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 
-            args.epochs+20)
+    scheduler_G = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_G,
+            args.n_epochs+20)
+    scheduler_D = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_D, 
+            args.n_epochs+20)
 
     # Start training
     train(dataloader, discriminator, generator, optimizer_G, optimizer_D, device,
