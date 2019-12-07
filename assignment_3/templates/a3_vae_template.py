@@ -83,7 +83,7 @@ class Decoder(nn.Module):
 
 class VAE(nn.Module):
 
-    def __init__(self, hidden_dim=500, z_dim=20, deep=False, device=torch.device('cpu')):
+    def __init__(self, hidden_dim=500, z_dim=20, deep=False, device=torch.device('cuda:0')):
         super().__init__()
 
         self.z_dim = z_dim
@@ -143,7 +143,7 @@ class VAE(nn.Module):
 
 
 
-def epoch_iter(model, data, optimizer, device=torch.device('cpu'), cv=False):
+def epoch_iter(model, data, optimizer, device=torch.device('cuda:0'), cv=False):
     """
     Perform a single epoch for either the training or validation.
     use model.training to determine if in 'training mode' or not.
@@ -190,7 +190,7 @@ def epoch_iter(model, data, optimizer, device=torch.device('cpu'), cv=False):
     return average_epoch_elbo
 
 
-def run_epoch(model, data, optimizer, device=torch.device('cpu')):
+def run_epoch(model, data, optimizer, device=torch.device('cuda:0')):
     """
     Run a train and validation epoch and return average elbo for each.
     """
