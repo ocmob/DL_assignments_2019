@@ -1,4 +1,3 @@
-
 #!/bin/bash
 #SBATCH --job-name=kurbanski_lstm_txt_gen
 #SBATCH --ntasks=1
