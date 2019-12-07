@@ -207,7 +207,7 @@ def main():
         bsize = args.batch_size
 
     dataloader = torch.utils.data.DataLoader(
-        datasets.MNIST('./data/mnist', train=True, download=True,
+        datasets.MNIST(args.dpath, train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.5,),
