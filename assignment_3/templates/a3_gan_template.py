@@ -133,7 +133,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                         fakebatch = generator(zbatch)
                         grid = make_grid(
                                 fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                                nrow = 1)
+                                nrow = NO_IMAGES)
                         save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
                             epoch, batches_done))
         else:
@@ -186,7 +186,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                         fakebatch = generator(zbatch)
                         grid = make_grid(
                                 fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                                nrow = 1)
+                                nrow = NO_IMAGES)
                         save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
                             epoch, batches_done))
 
@@ -214,7 +214,7 @@ def main():
                                                 (0.5,))])),
                            #transforms.Normalize((0.5, 0.5, 0.5),
 #                                                (0.5, 0.5, 0.5))])),
-        batch_size=bsize, shuffle=True)
+        batch_size=bsize, shuffle=True, workers=6)
 
     # Initialize device
     device = torch.device(args.device)
