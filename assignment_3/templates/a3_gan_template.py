@@ -196,8 +196,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
 
 def main():
     # Create output image directory
-    IMG_DIR = 'gan_images'
-    os.makedirs(IMG_DIR, exist_ok=True)
+    os.makedirs(args.outpath, exist_ok=True)
 
     # load data
     if args.t:
@@ -226,7 +225,7 @@ def main():
 
     # Start training
     train(dataloader, discriminator, generator, optimizer_G, optimizer_D, device,
-            IMG_DIR, args.t, args.dsteps, args.gsteps, args.latent_dim)
+            args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim)
 
     # You can save your generator here to re-use it to generate images for your
     # report, e.g.:
@@ -262,6 +261,10 @@ if __name__ == "__main__":
                         help='Steps/training iteration for discriminator')
     parser.add_argument('--gsteps', type=int, default=1,
                         help='Steps/training iteration for generator')
+    parser.add_argument('--dpath', type=str, default='./data/mnist',
+                        help='Root path for dataset')
+    parser.add_argument('--outpath', type=str, default='gan_images',
+                        help='Path for output images')
     args = parser.parse_args()
 
     if args.t:
