@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH --job-name=kurbanski_lstm_txt_gen
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=6:00:00
+#SBATCH --mem=60000M
+#SBATCH --partition=gpu_shared_course
+#SBATCH --gres=gpu:1
+
+module purge
+module load 2019
+module load Anaconda3/2018.12
+. /sw/arch/Debian9/EB_production/2019/software/Anaconda3/2018.12/etc/profile.d/conda.sh
+
+conda activate dl
+
+TIME=$(date +%s)
+DSTEP=3
+GSTEP=10
+
+cp -r ./data/mnist $TMPDIR/mnist
+mkdir $TMPDIR/gan_images
+
+python a3_gan_template.py --n_epochs 100 --num_workers 3 --dsteps 10 --gsteps 3 --batch_size 512 --dpath $TMPDIR/mnist --outpath $TMPDIR/gan_images
+
+mv $TMPDIR/gan_images ./results/gan_images/${TIME}_D${DSTEP}_G${GSTEP}
+

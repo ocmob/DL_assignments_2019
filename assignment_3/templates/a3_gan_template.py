@@ -125,17 +125,17 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                     g_loss += loss.cpu().item()
 
                 batches_done = epoch * len(dataloader) + i
-                if batches_done % args.save_interval == 0:
-                    with torch.no_grad():
-                        NO_IMAGES = 5
-                        zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
-                                torch.ones(NO_IMAGES, latent_dim)).to(device)
-                        fakebatch = generator(zbatch)
-                        grid = make_grid(
-                                fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                                nrow = NO_IMAGES)
-                        save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
-                            epoch, batches_done))
+                #if batches_done % args.save_interval == 0:
+                #    with torch.no_grad():
+                #        NO_IMAGES = 5
+                #        zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
+                #                torch.ones(NO_IMAGES, latent_dim)).to(device)
+                #        fakebatch = generator(zbatch)
+                #        grid = make_grid(
+                #                fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
+                #                nrow = NO_IMAGES)
+                #        save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
+                #            epoch, batches_done))
         else:
             for i, (imgs, _) in enumerate(dataloader):
 
@@ -178,17 +178,17 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                     g_loss += loss.cpu().item()
 
                 batches_done = epoch * len(dataloader) + i
-                if batches_done % args.save_interval == 0:
-                    with torch.no_grad():
-                        NO_IMAGES = 5
-                        zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
-                                torch.ones(NO_IMAGES, latent_dim)).to(device)
-                        fakebatch = generator(zbatch)
-                        grid = make_grid(
-                                fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                                nrow = NO_IMAGES)
-                        save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
-                            epoch, batches_done))
+                #if batches_done % args.save_interval == 0:
+        with torch.no_grad():
+            NO_IMAGES = 5
+            zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
+                    torch.ones(NO_IMAGES, latent_dim)).to(device)
+            fakebatch = generator(zbatch)
+            grid = make_grid(
+                    fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
+                    nrow = NO_IMAGES)
+            save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
+                epoch, batches_done))
 
         if (scheduler_G is not None) and (scheduler_D is not None):
             scheduler_G.step()
@@ -218,7 +218,7 @@ def main():
                                                 (0.5,))])),
                            #transforms.Normalize((0.5, 0.5, 0.5),
 #                                                (0.5, 0.5, 0.5))])),
-        batch_size=bsize, shuffle=True, num_workers=6)
+        batch_size=bsize, shuffle=True, num_workers=args.num_workers)
 
     # Initialize device
     device = torch.device(args.device)
@@ -276,6 +276,8 @@ if __name__ == "__main__":
                         help='Root path for dataset')
     parser.add_argument('--outpath', type=str, default='gan_images',
                         help='Path for output images')
+    parser.add_argument('--num_workers', type=int, default=0,
+                        help='num_workers for dataloader')
     args = parser.parse_args()
 
     if args.t:
