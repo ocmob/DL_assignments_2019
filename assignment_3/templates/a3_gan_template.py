@@ -191,16 +191,16 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
             plt.imshow(grid.permute(2, 1, 0).numpy())
             plt.title('Sample generated image, epoch {}'.format(epoch))
             plt.savefig('{}/epoch_{}_batch_{}.png'.format(img_dir, 
-                epoch, batches_done)
+                epoch, batches_done))
 
-        if not (scheduler_G is None) and not (scheduler_D is None):
+        if not (scheduler_G is None or scheduler_D is None):
             scheduler_G.step()
             scheduler_D.step()
 
         g_loss /= (i+1)*g_steps
         d_loss /= (i+1)*d_steps
 
-        print(f"[Epoch {epoch}] D-loss: {d_loss}, G-loss: {g_loss}, LR: {}".format(
+        print("[Epoch {epoch}] D-loss: {d_loss}, G-loss: {g_loss}, LR: {}".format(
             optimizer_D.state_dict()['param_groups'][0]['lr']))
 
 
