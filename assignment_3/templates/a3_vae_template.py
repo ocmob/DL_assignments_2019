@@ -205,6 +205,15 @@ def save_elbo_plot(train_curve, val_curve, filename):
     plt.tight_layout()
     plt.savefig(filename)
 
+def save_samples(model, no, title, filename):
+    imgs, img_means = model.sample(no)
+    grid = make_grid(imgs.view(no, 1, 28, -1).permute(0, 1, 3, 2), nrow = 2)
+    plt.imshow(grid.permute(2, 1, 0).numpy())
+    plt.title(title)
+    if ARGS.t:
+        plt.savefig(filename)
+    else:
+        plt.savefig(filename)
 
 def main():
 
@@ -217,6 +226,9 @@ def main():
     model = VAE(z_dim=ARGS.zdim, deep=True, device=device)
     optimizer = torch.optim.Adam(model.parameters())
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, ARGS.epochs+20)
+
+    save_samples(model, 10, "Samples from VAE, {}-D latent space, epoch = {}".format(ARGS.zdim, 0), 
+            "./results/test_epoch_0.pdf")
 
     train_curve, val_curve = [], []
     for epoch in range(ARGS.epochs):
@@ -231,20 +243,21 @@ def main():
         #  Add functionality to plot samples from model during training.
         #  You can use the make_grid functioanlity that is already imported.
         # --------------------------------------------------------------------
+        # Biggest change in sample quality is first couple of steps
         if ((epoch+1) % 5) == 0:
-            print("[Epoch {}], current learning rate: {}".format(epoch,optimizer.state_dict()['param_groups'][0]['lr']))
-            imgs, img_means = model.sample(10)
-            grid = make_grid(imgs.view(10, 1, 28, -1).permute(0, 1, 3, 2), nrow = 2)
-            plt.imshow(grid.permute(2, 1, 0).numpy())
-            plt.title("Samples from VAE, 20-D latent space, epoch = {}".format(epoch+1))
+            print("[Epoch {}] current learning rate: {}".format(epoch,optimizer.state_dict()['param_groups'][0]['lr']))
+        if (epoch < 5) or ((epoch+1) % 10) == 0:
             if ARGS.t:
-                plt.savefig("./results/test_epoch_{}.pdf".format(epoch+1))
+                save_samples(model, 10, "Samples from VAE, {}-D latent space, epoch = {}".format(ARGS.zdim, epoch+1), 
+                        "./results/test_epoch_{}.pdf".format(epoch+1))
             else:
-                plt.savefig("./results/samples_epoch_{}.pdf".format(epoch+1))
+                save_samples(model, 10, "Samples from VAE, {}-D latent space, epoch = {}".format(ARGS.zdim, epoch+1),
+                        "./results/samples_epoch_{}.pdf".format(epoch+1))
 
     if ARGS.zdim == 2:
-        means = model.get_latent(20)
-        grid = make_grid(means.view(400, 1, 28, -1).permute(0, 1, 3, 2), nrow = 20)
+        GRID_SIZE = 20
+        means = model.get_latent(GRID_SIZE)
+        grid = make_grid(means.view(GRID_SIZE**2, 1, 28, -1).permute(0, 1, 3, 2), nrow = GRID_SIZE)
         plt.figure(figsize=(12,12))
         plt.imshow(grid.permute(2, 1, 0).numpy())
         plt.title("Learned MNIST manifold")

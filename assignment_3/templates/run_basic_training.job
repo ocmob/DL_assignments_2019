@@ -15,11 +15,6 @@ module load Anaconda3/2018.12
 
 conda activate dl
 
-python a3_vae_template.py --zdim 2 --epochs 100
-
-mv ./results/*.pdf ./results/results_z2/
-mv ./*.pdf ./results/results_z2/
-
 python a3_vae_template.py --zdim 20 --epochs 100
 
 mv ./results/*.pdf ./results/results_z20/
