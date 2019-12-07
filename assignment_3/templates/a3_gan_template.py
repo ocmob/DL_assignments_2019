@@ -75,7 +75,7 @@ class Discriminator(nn.Module):
 
 def train(dataloader, discriminator, generator, optimizer_G, optimizer_D, 
         device = torch.device('cuda:0'), img_dir=None, test_mode=False,
-        d_steps=1, g_steps=1, latent_dim=100):
+        d_steps=1, g_steps=1, latent_dim=100, scheduler_G=None, scheduler_D=None):
     EPS = 1e-10
 
     for epoch in range(args.n_epochs):
@@ -190,6 +190,10 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                         save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
                             epoch, batches_done))
 
+        if (scheduler_G is not None) and (scheduler_D is not None):
+            scheduler_G.step()
+            scheduler_D.step()
+
         g_loss /= (i+1)*g_steps
         d_loss /= (i+1)*d_steps
 
@@ -214,7 +218,7 @@ def main():
                                                 (0.5,))])),
                            #transforms.Normalize((0.5, 0.5, 0.5),
 #                                                (0.5, 0.5, 0.5))])),
-        batch_size=bsize, shuffle=True, workers=6)
+        batch_size=bsize, shuffle=True, num_workers=6)
 
     # Initialize device
     device = torch.device(args.device)
@@ -224,10 +228,15 @@ def main():
     discriminator = Discriminator(args.latent_dim).to(device)
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lr)
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=args.lr)
+    scheduler_G = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
+            args.epochs+20)
+    scheduler_D = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 
+            args.epochs+20)
 
     # Start training
     train(dataloader, discriminator, generator, optimizer_G, optimizer_D, device,
-            args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim)
+            args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim,
+            scheduler_G, scheduler_D)
 
     # You can save your generator here to re-use it to generate images for your
     # report, e.g.:
