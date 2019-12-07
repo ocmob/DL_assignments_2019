@@ -99,7 +99,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                     labels = (indices >= imgs.shape[0]).long()
 
                     answer = discriminator(mixedbatch[indices, :])
-                    neg = torch.zeros_like(answer)
+                    neg = torch.ones_like(answer)
                     neg[labels>0] = -1
                     answer = answer*neg
 
@@ -152,7 +152,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                     labels = (indices >= imgs.shape[0]).long()
 
                     answer = discriminator(mixedbatch[indices, :])
-                    neg = torch.zeros_like(answer)
+                    neg = torch.ones_like(answer)
                     neg[labels>0] = -1
                     answer = answer*neg
 
@@ -207,7 +207,7 @@ def main():
         bsize = args.batch_size
 
     dataloader = torch.utils.data.DataLoader(
-        datasets.MNIST(args.dpath, train=True, download=True,
+        datasets.MNIST(args.dpath, train=True, download=False,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.5,),
