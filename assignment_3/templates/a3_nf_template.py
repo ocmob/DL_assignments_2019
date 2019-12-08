@@ -15,7 +15,9 @@ def log_prior(x):
     Compute the elementwise log probability of a standard Gaussian, i.e.
     N(x | mu=0, sigma=1).
     """
-    raise NotImplementedError
+    
+    logp = torch.diag(-x.shape[1]/2*torch.log(6.2821)-1/2*(X @ X.T))
+
     return logp
 
 
@@ -23,7 +25,8 @@ def sample_prior(size):
     """
     Sample from a standard Gaussian.
     """
-    raise NotImplementedError
+
+    sample = torch.normal(torch.ones(size), torch.zeros(size))
 
     if torch.cuda.is_available():
         sample = sample.cuda()
@@ -56,7 +59,11 @@ class Coupling(torch.nn.Module):
         # scale variables.
         # Suggestion: Linear ReLU Linear ReLU Linear.
         self.nn = torch.nn.Sequential(
-            None
+            nn.Linear(c_in, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, c_in)
             )
 
         # The nn should be initialized such that the weights of the last layer
@@ -75,9 +82,15 @@ class Coupling(torch.nn.Module):
         # from the NN.
 
         if not reverse:
-            raise NotImplementedError
+            nnout = self.nn.forward(self.mask * z)
+            logscale = torch.tanh(nnout)
+            z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + nnout)
+            ldj += logscale.sum(dim = 1)
         else:
-            raise NotImplementedError
+            nnout = self.nn.forward(self.mask * z)
+            logscale = -torch.tanh(nnout)
+            z = self.mask*z + (1-self.mask)*(z - nnout)*torch.exp(logscale)
+            ldj += logscale.sum(dim = 1)
 
         return z, ldj
 
@@ -158,7 +171,7 @@ class Model(nn.Module):
 
         # Compute log_pz and log_px per example
 
-        raise NotImplementedError
+        log_px = torch.log(z) + ldj
 
         return log_px
 
@@ -169,6 +182,8 @@ class Model(nn.Module):
         """
         z = sample_prior((n_samples,) + self.flow.z_shape)
         ldj = torch.zeros(z.size(0), device=z.device)
+        z, _ = self.flow(z, ldj, reverse=True)
+
 
         raise NotImplementedError
 
