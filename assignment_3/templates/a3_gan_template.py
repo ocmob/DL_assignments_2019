@@ -187,7 +187,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
             fakebatch = generator(zbatch)
             grid = make_grid(
                     fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                    nrow = 4)
+                    nrow = 5)
             plt.imshow(grid.permute(2, 1, 0).numpy())
             plt.title('Sample generated image, epoch {}'.format(epoch))
             plt.savefig('{}/epoch_{}_batch_{}.png'.format(img_dir, 
