@@ -85,37 +85,37 @@ class Coupling(torch.nn.Module):
         # log_scale = tanh(h), where h is the scale-output
         # from the NN.
 
-        if not reverse:
-            nnout = self.nn.forward(self.mask * z)
-            logscale = torch.tanh(nnout)
-            z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + nnout)
-            #ldj += ((1-self.mask)*logscale).sum(dim = 1)
-            ldj += (logscale).sum(dim = 1)
-        else:
-            nnout = self.nn.forward(self.mask * z)
-            logscale = -torch.tanh(nnout)
-            z = self.mask*z + (1-self.mask)*(z - nnout)*torch.exp(logscale)
-            ldj += logscale.sum(dim = 1)
-
-        #z_masked = z * self.mask
-        #hidden = self.nn(z_masked)
-        #trans = hidden
-        #log_scale = hidden
-
-        ##log_scale, trans = self.nn(z_masked).chunk(2, dim=1)
-        ##log_scale = self.tanh(log_scale)
-
-
         #if not reverse:
-        #    #straight direction
-        #    z = z_masked + (1 - self.mask) * (z * torch.exp(log_scale) + trans)
-        #    #compute log determinant Jacobian
-        #    ldj += torch.sum((1 - self.mask) * log_scale, dim=1)
+        #    nnout = self.nn.forward(self.mask * z)
+        #    logscale = torch.tanh(nnout)
+        #    z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + nnout)
+        #    ldj += ((1-self.mask)*logscale).sum(dim = 1)
+        #    #ldj += (logscale).sum(dim = 1)
         #else:
-        #    #inverse direction
-        #    z = z_masked + (1 - self.mask) * (z - trans) * torch.exp(-log_scale)
-        #    #set to zero
-        #    ldj = torch.zeros_like(ldj)
+        #    nnout = self.nn.forward(self.mask * z)
+        #    logscale = -torch.tanh(nnout)
+        #    z = self.mask*z + (1-self.mask)*(z - nnout)*torch.exp(logscale)
+        #    ldj += logscale.sum(dim = 1)
+
+        z_masked = z * self.mask
+        hidden = self.nn(z_masked)
+        trans = hidden
+        log_scale = hidden
+
+        #log_scale, trans = self.nn(z_masked).chunk(2, dim=1)
+        #log_scale = self.tanh(log_scale)
+
+
+        if not reverse:
+            #straight direction
+            z = z_masked + (1 - self.mask) * (z * torch.exp(log_scale) + trans)
+            #compute log determinant Jacobian
+            ldj += torch.sum((1 - self.mask) * log_scale, dim=1)
+        else:
+            #inverse direction
+            z = z_masked + (1 - self.mask) * (z - trans) * torch.exp(-log_scale)
+            #set to zero
+            ldj = torch.zeros_like(ldj)
         return z, ldj
 
 
@@ -209,21 +209,6 @@ class Model(nn.Module):
 
 
     def forward(self, input):
-        #z = input
-        #ldj = torch.zeros(z.size(0), device=z.device)
-
-        #z = self.dequantize(z)
-        #z, ldj = self.logit_normalize(z, ldj)
-
-        #z, ldj = self.flow(z, ldj)
-
-        ## Compute log_pz and log_px per example
-        #log_pz = log_prior(z)
-        #log_px = log_pz + ldj
-        
-        #"""
-        #Given input, encode the input to z space. Also keep track of ldj.
-        #"""
         z = input
         ldj = torch.zeros(z.size(0), device=z.device)
 
@@ -231,6 +216,21 @@ class Model(nn.Module):
         z, ldj = self.logit_normalize(z, ldj)
 
         z, ldj = self.flow(z, ldj)
+
+        # Compute log_pz and log_px per example
+        log_pz = log_prior(z)
+        log_px = log_pz + ldj
+        
+        #"""
+        #Given input, encode the input to z space. Also keep track of ldj.
+        #"""
+        #z = input
+        #ldj = torch.zeros(z.size(0), device=z.device)
+
+        #z = self.dequantize(z)
+        #z, ldj = self.logit_normalize(z, ldj)
+
+        #z, ldj = self.flow(z, ldj)
         #z_sig = torch.nn.functional.sigmoid(z)
         #ldj_sig = torch.nn.functional.sigmoid(ldj)
 
@@ -272,32 +272,7 @@ def epoch_iter(model, data, optimizer, test_mode = False,
     log_2 likelihood per dimension) averaged over the complete epoch.
     """
 
-    avg_bpd = 0
-    for i, (imgs, _) in enumerate (data):
-
-        #forward pass
-        imgs.to(device)
-        log_px = model.forward(imgs)
-
-        #compute loss
-        loss = -1*torch.mean(log_px)
-        avg_bpd += (loss/0.30103).item()
-
-        #backward pass only when in training mode
-        if model.training:
-            optimizer.zero_grad()
-            loss.backward()
-
-            #clip gradient to avoid exploding grads
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-
-            optimizer.step()
-
-        if i == 5:
-            break
-
-    return avg_bpd/(i+1)/28**2
-
+    bpds = 0
     #for i, (imgs, _) in enumerate (data):
 
     #    #forward pass
@@ -306,7 +281,7 @@ def epoch_iter(model, data, optimizer, test_mode = False,
 
     #    #compute loss
     #    loss = -1*torch.mean(log_px)
-    #    bpds += loss.item()
+    #    avg_bpd += (loss/0.30103).item()
 
     #    #backward pass only when in training mode
     #    if model.training:
@@ -318,16 +293,39 @@ def epoch_iter(model, data, optimizer, test_mode = False,
 
     #        optimizer.step()
 
-    #    if i == 50:
+    #    if i == 5:
     #        break
 
-    ##for readibility
-    #n_batches = i + 1
-    #img_shape = imgs.shape[1] # 28 x 28
-    ##compute average bit per dimension for one epoch
-    #avg_bpd = bpds / (n_batches * (28**2) * np.log(2))
+    #return avg_bpd/(i+1)/28**2
 
-    #return avg_bpd
+    for i, (imgs, _) in enumerate (data):
+
+        #forward pass
+        imgs.to(device)
+        log_px = model.forward(imgs)
+
+        #compute loss
+        loss = -1*torch.mean(log_px)
+        bpds += loss.item()
+
+        #backward pass only when in training mode
+        if model.training:
+            optimizer.zero_grad()
+            loss.backward()
+
+            #clip gradient to avoid exploding grads
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+
+            optimizer.step()
+
+
+    #for readibility
+    n_batches = i + 1
+    img_shape = imgs.shape[1] # 28 x 28
+    #compute average bit per dimension for one epoch
+    avg_bpd = bpds / (n_batches * (28**2) * np.log(2))
+
+    return avg_bpd
 
     #avg_bpd = 0
     #
