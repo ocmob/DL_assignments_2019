@@ -15,14 +15,14 @@ module load Anaconda3/2018.12
 
 conda activate dl
 
-TIME=$(date +%s)
-DSTEP=7
-GSTEP=3
+#TIME=$(date +%s)
+#DSTEP=7
+#GSTEP=3
 
-cp -r ./data/mnist $TMPDIR/mnist
-mkdir $TMPDIR/gan_images
+cp -r ./data/mnist $TMPDIR
+#mkdir $TMPDIR/gan_images
 
-python a3_gan_template.py --n_epochs 200 --num_workers 3 --dsteps $DSTEP --gsteps $GSTEP --batch_size 512 --dpath $TMPDIR/mnist --outpath $TMPDIR/gan_images -sm
+python a3_nf_template.py -t --dpath $TMPDIR
 
-mv $TMPDIR/gan_images ./results/gan_images/${TIME}_D${DSTEP}_G${GSTEP}
+#mv $TMPDIR/gan_images ./results/gan_images/${TIME}_D${DSTEP}_G${GSTEP}
 
