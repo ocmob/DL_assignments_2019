@@ -26,7 +26,7 @@ def sample_prior(size):
     Sample from a standard Gaussian.
     """
 
-    sample = torch.normal(torch.ones(size), torch.zeros(size))
+    sample = torch.normal(torch.zeros(size), torch.ones(size))
 
     if torch.cuda.is_available():
         sample = sample.cuda()
@@ -85,7 +85,7 @@ class Coupling(torch.nn.Module):
             nnout = self.nn.forward(self.mask * z)
             logscale = torch.tanh(nnout)
             z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + nnout)
-            ldj += logscale.sum(dim = 1)
+            ldj += ((1-self.mask)*logscale).sum(dim = 1)
         else:
             nnout = self.nn.forward(self.mask * z)
             logscale = -torch.tanh(nnout)
@@ -157,10 +157,37 @@ class Model(nn.Module):
 
         return z, logdet
 
+    def debug(self, input):
+        with torch.no_grad():
+            # Forward
+            z = input
+
+            grid = make_grid(
+                    z.cpu().view(-1, 1, 28, 28).permute(0, 1, 3, 2), 
+                    nrow = 5, normalize=True)
+            plt.imshow(grid.permute(2, 1, 0).numpy())
+            plt.show()
+
+            ldj = torch.zeros(z.size(0), device=z.device)
+            z = self.dequantize(z)
+            z, ldj = self.logit_normalize(z, ldj)
+            z, ldj = self.flow(z, ldj)
+
+            # Backward
+            z, _ = self.flow(z, ldj, reverse=True)
+            z, _ = self.logit_normalize(z, _, reverse=True)
+
+            grid = make_grid(
+                    z.cpu().view(-1, 1, 28, 28).permute(0, 1, 3, 2), 
+                    nrow = 5, normalize=True)
+            plt.imshow(grid.permute(2, 1, 0).numpy())
+            plt.show()
+
+
     def forward(self, input):
-        """
-        Given input, encode the input to z space. Also keep track of ldj.
-        """
+        #"""
+        #Given input, encode the input to z space. Also keep track of ldj.
+        #"""
         z = input
         ldj = torch.zeros(z.size(0), device=z.device)
 
@@ -168,13 +195,6 @@ class Model(nn.Module):
         z, ldj = self.logit_normalize(z, ldj)
 
         z, ldj = self.flow(z, ldj)
-        #z_sig = torch.nn.functional.sigmoid(z)
-        #ldj_sig = torch.nn.functional.sigmoid(ldj)
-
-        ## Compute log_pz and log_px per example
-        ## TODO ?? sum
-        #if torch.isnan(log_px).any():
-        #    breakpoint()
 
         log_px = log_prior(z) + ldj
 
@@ -187,17 +207,12 @@ class Model(nn.Module):
         """
 
         with torch.no_grad():
-            #TODO logit normalization?
             z = sample_prior((n_samples,) + self.flow.z_shape)
             ldj = torch.zeros(z.size(0), device=z.device)
-
-            z = self.dequantize(z)
 
             z, _ = self.flow(z, ldj, reverse=True)
 
             z, _ = self.logit_normalize(z, _, reverse=True)
-
-            #z = torch.sigmoid(z)
 
         return z
 
@@ -212,12 +227,79 @@ def epoch_iter(model, data, optimizer, test_mode = False,
     log_2 likelihood per dimension) averaged over the complete epoch.
     """
 
+    #for i, (imgs, _) in enumerate (data):
+
+    #    #forward pass
+    #    imgs.to(device)
+    #    log_px = model.forward(imgs)
+
+    #    #compute loss
+    #    loss = -1*torch.mean(log_px)
+    #    bpds += loss.item()
+
+    #    #backward pass only when in training mode
+    #    if model.training:
+    #        optimizer.zero_grad()
+    #        loss.backward()
+
+    #        #clip gradient to avoid exploding grads
+    #        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+
+    #        optimizer.step()
+
+    #    if i == 50:
+    #        break
+
+    ##for readibility
+    #n_batches = i + 1
+    #img_shape = imgs.shape[1] # 28 x 28
+    ##compute average bit per dimension for one epoch
+    #avg_bpd = bpds / (n_batches * (28**2) * np.log(2))
+
+    #return avg_bpd
+
+    #avg_bpd = 0
+    #
+    #dataiter = iter(data)
+
+    #if test_mode: 
+    #    iters = 5
+    #    #iters = 50
+    #else:
+    #    iters = len(dataiter)
+
+    #if model.training:
+    #    for i in range(iters):
+    #        optimizer.zero_grad()
+    #        imgs, _ = next(dataiter)
+    #        imgs = imgs.to(device).reshape(-1, 28*28)
+    #        #imgs = imgs.to(device)
+    #        log_px = -model(imgs).mean()
+    #        log_px.backward()
+    #        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+    #        optimizer.step()
+
+    #        avg_bpd += (log_px/0.30103).item()
+    #else:
+    #    with torch.no_grad():
+    #        for i in range(iters):
+    #            optimizer.zero_grad()
+    #            imgs, _ = next(dataiter)
+    #            #imgs = imgs.to(device).reshape(-1, 28*28)
+    #            imgs = imgs.to(device)
+    #            log_px = -model(imgs).mean()
+
+    #            #avg_bpd += (log_px/0.30103).item()
+    #
+    #return avg_bpd/(i+1)
+
     avg_bpd = 0
     
     dataiter = iter(data)
 
     if test_mode: 
         iters = 5
+        #iters = 50
     else:
         iters = len(dataiter)
 
@@ -226,8 +308,10 @@ def epoch_iter(model, data, optimizer, test_mode = False,
             optimizer.zero_grad()
             imgs, _ = next(dataiter)
             imgs = imgs.to(device).reshape(-1, 28*28)
+            #imgs = imgs.to(device)
             log_px = -model(imgs).mean()
             log_px.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
             optimizer.step()
 
             avg_bpd += (log_px/0.30103).item()
@@ -236,13 +320,13 @@ def epoch_iter(model, data, optimizer, test_mode = False,
             for i in range(iters):
                 optimizer.zero_grad()
                 imgs, _ = next(dataiter)
-                imgs = imgs.to(device).reshape(-1, 28*28)
+                #imgs = imgs.to(device).reshape(-1, 28*28)
+                imgs = imgs.to(device)
                 log_px = -model(imgs).mean()
 
                 avg_bpd += (log_px/0.30103).item()
     
-    return avg_bpd/(i+1)
-
+    return avg_bpd/(i+1)/28**2
 
 def run_epoch(model, data, optimizer, test_mode = False, 
         device = torch.device('cuda:0')):
@@ -273,8 +357,10 @@ def save_bpd_plot(train_curve, val_curve, filename):
 
 def main():
     if(ARGS.t):
-        data = mnist(root=ARGS.dpath, batch_size=2
+        data = mnist(root=ARGS.dpath, batch_size=16
                 )[:2]  # ignore test split
+#        data = mnist(root=ARGS.dpath, batch_size=2
+#                )[:2]  # ignore test split
     else:
         data = mnist(root=ARGS.dpath)[:2]  # ignore test split
 
@@ -301,7 +387,7 @@ def main():
         samples = model.sample(NO_IMAGES)
         grid = make_grid(
                 samples.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                nrow = 5)
+                nrow = 5, normalize=True)
         plt.imshow(grid.permute(2, 1, 0).numpy())
         plt.title('Sample generated image, epoch {}'.format(epoch))
         plt.savefig('images_nfs/epoch_{}.png'.format(epoch))
