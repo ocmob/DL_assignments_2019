@@ -176,7 +176,7 @@ class Model(nn.Module):
         #if torch.isnan(log_px).any():
         #    breakpoint()
 
-        log_px = log_prior(z) + ldj.view(z.shape[0],-1)
+        log_px = log_prior(z) + ldj
 
         return log_px
 
@@ -192,11 +192,12 @@ class Model(nn.Module):
             ldj = torch.zeros(z.size(0), device=z.device)
 
             z = self.dequantize(z)
-            z, ldj = self.logit_normalize(z, ldj)
 
             z, _ = self.flow(z, ldj, reverse=True)
 
-            z = torch.sigmoid(z)
+            z, _ = self.logit_normalize(z, _, reverse=True)
+
+            #z = torch.sigmoid(z)
 
         return z
 
@@ -225,7 +226,7 @@ def epoch_iter(model, data, optimizer, test_mode = False,
             optimizer.zero_grad()
             imgs, _ = next(dataiter)
             imgs = imgs.to(device).reshape(-1, 28*28)
-            log_px = -model(imgs).sum()
+            log_px = -model(imgs).mean()
             log_px.backward()
             optimizer.step()
 
@@ -236,7 +237,7 @@ def epoch_iter(model, data, optimizer, test_mode = False,
                 optimizer.zero_grad()
                 imgs, _ = next(dataiter)
                 imgs = imgs.to(device).reshape(-1, 28*28)
-                log_px = -model(imgs).sum()
+                log_px = -model(imgs).mean()
 
                 avg_bpd += (log_px/0.30103).item()
     
@@ -277,9 +278,11 @@ def main():
     else:
         data = mnist(root=ARGS.dpath)[:2]  # ignore test split
 
-    model = Model(shape=[784])
-
     device = torch.device(ARGS.device)
+
+    model = Model(shape=[784])
+    model.to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     os.makedirs('images_nfs', exist_ok=True)
 
