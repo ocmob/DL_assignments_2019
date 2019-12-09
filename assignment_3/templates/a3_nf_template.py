@@ -186,14 +186,17 @@ class Model(nn.Module):
         Then invert the flow and invert the logit_normalize.
         """
 
-        #TODO logit normalization?
-        z = sample_prior((n_samples,) + self.flow.z_shape)
-        ldj = torch.zeros(z.size(0), device=z.device)
+        with torch.no_grad():
+            #TODO logit normalization?
+            z = sample_prior((n_samples,) + self.flow.z_shape)
+            ldj = torch.zeros(z.size(0), device=z.device)
 
-        z = self.dequantize(z)
-        z, ldj = self.logit_normalize(z, ldj)
+            z = self.dequantize(z)
+            z, ldj = self.logit_normalize(z, ldj)
 
-        z, _ = self.flow(z, ldj, reverse=True)
+            z, _ = self.flow(z, ldj, reverse=True)
+
+            z = torch.sigmoid(z)
 
         return z
 
@@ -269,9 +272,10 @@ def save_bpd_plot(train_curve, val_curve, filename):
 
 def main():
     if(ARGS.t):
-        data = mnist(batch_size=2)[:2]  # ignore test split
+        data = mnist(root=ARGS.dpath, batch_size=2
+                )[:2]  # ignore test split
     else:
-        data = mnist()[:2]  # ignore test split
+        data = mnist(root=ARGS.dpath)[:2]  # ignore test split
 
     model = Model(shape=[784])
 
@@ -288,6 +292,16 @@ def main():
         print("[Epoch {epoch}] train bpd: {train_bpd} val_bpd: {val_bpd}".format(
             epoch=epoch, train_bpd=train_bpd, val_bpd=val_bpd))
 
+        os.makedirs('images_nfs/', exist_ok=True)
+
+        NO_IMAGES = 25
+        samples = model.sample(NO_IMAGES)
+        grid = make_grid(
+                samples.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
+                nrow = 5)
+        plt.imshow(grid.permute(2, 1, 0).numpy())
+        plt.title('Sample generated image, epoch {}'.format(epoch))
+        plt.savefig('images_nfs/epoch_{}.png'.format(epoch))
         # --------------------------------------------------------------------
         #  Add functionality to plot samples from model during training.
         #  You can use the make_grid functionality that is already imported.
@@ -305,6 +319,8 @@ if __name__ == "__main__":
                         help='run in test mode')
     parser.add_argument('--device', type=str, default="cuda:0", 
             help="Training device 'cpu' or 'cuda:0'")
+    parser.add_argument('--dpath', type=str, default='./data/',
+                        help='Root path for dataset')
 
     ARGS = parser.parse_args()
 
