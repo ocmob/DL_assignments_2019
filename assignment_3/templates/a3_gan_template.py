@@ -82,7 +82,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
     for epoch in range(args.n_epochs):
         d_loss = 0
         g_loss = 0
-
+        # TODO Change test mode handlign
         if test_mode:
             dataiter = iter(dataloader)
             for i in range(5):
@@ -180,6 +180,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
 
                 batches_done = epoch * len(dataloader) + i
                 #if batches_done % args.save_interval == 0:
+                #TODO EPOCHS DONE instead of batches done
         with torch.no_grad():
             NO_IMAGES = 25
             zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
