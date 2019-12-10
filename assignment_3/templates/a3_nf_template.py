@@ -17,10 +17,6 @@ def log_prior(x):
     halflog2pi = 0.5*np.log(2*np.pi)
     logp = torch.diag(-x.shape[1]*halflog2pi-1/2*(x @ x.T))
 
-    ## ===> PREVIOUS
-    #pi_tensor = torch.tensor(2*np.pi)
-    #logp = torch.sum(- 0.5 * x.pow(2) - torch.log(torch.sqrt(pi_tensor)), dim=1)
-
     return logp
 
 
@@ -30,9 +26,6 @@ def sample_prior(size):
     """
 
     sample = torch.normal(torch.zeros(size), torch.ones(size))
-
-    ## ===> PREVIOUS
-    #sample = torch.randn(size)
 
     if torch.cuda.is_available():
         sample = sample.cuda()
@@ -77,26 +70,6 @@ class Coupling(torch.nn.Module):
         self.nn[-1].weight.data.zero_()
         self.nn[-1].bias.data.zero_()
 
-#       ===> PREVIOUS
-#        # The nn should be initialized such that the weights of the last layer
-#        # is zero, so that its initial transform is identity.
-#        self.nn[-1].weight.data.zero_()
-#        self.nn[-1].bias.data.zero_()
-#        self.nn = torch.nn.Sequential(
-#            nn.Linear(c_in, n_hidden),
-#            nn.ReLU(),
-#            nn.Linear(n_hidden, n_hidden),
-#            nn.ReLU(),
-#            )
-#        self.trans_net = nn.Linear(n_hidden, c_in)
-#        self.scale_net = nn.Sequential(
-#            nn.Linear(n_hidden, c_in),
-#            nn.Tanh()
-#        )
-#        self.trans_net.weight.data.zero_()
-#        self.trans_net.bias.data.zero_()
-#        self.scale_net[0].weight.data.zero_()
-#        self.scale_net[0].bias.data.zero_()
 
     def forward(self, z, ldj, reverse=False):
         # Implement the forward and inverse for an affine coupling layer. Split
@@ -114,32 +87,11 @@ class Coupling(torch.nn.Module):
         if not reverse:
             logscale = torch.tanh(logscale)
             z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + trans)
-            ldj += ((1-self.mask)*logscale).sum(dim = 1)
         else:
             logscale = -torch.tanh(logscale)
             z = self.mask*z + (1-self.mask)*(z - trans)*torch.exp(logscale)
-            ldj += ((1-self.mask)*logscale).sum(dim = 1)
-        ## ===> PREVIOUS
-        #z_masked = z * self.mask
-        #nnout = self.nn(z_masked)
-        #log_scale, trans = torch.chunk(nnout, 2, dim = 1)
-        #log_scale = torch.tanh(log_scale)
 
-        ##log_scale, trans = self.nn(z_masked).chunk(2, dim=1)
-        ##log_scale = self.tanh(log_scale)
-
-
-        #if not reverse:
-        #    #straight direction
-        #    z = z_masked + (1 - self.mask) * (z * torch.exp(log_scale) + trans)
-        #    #compute log determinant Jacobian
-        #    ldj += torch.sum((1 - self.mask) * log_scale, dim=1)
-        #else:
-        #    #inverse direction
-        #    z = z_masked + (1 - self.mask) * (z - trans) * torch.exp(-log_scale)
-        #    #set to zero
-        #    ldj = torch.zeros_like(ldj)
-
+        ldj += ((1-self.mask)*logscale).sum(dim = 1)
 
         return z, ldj
 
@@ -211,7 +163,6 @@ class Model(nn.Module):
         with torch.no_grad():
             # Forward
             z = input
-
             grid = make_grid(
                     z.cpu().view(-1, 1, 28, 28).permute(0, 1, 3, 2), 
                     nrow = 5, normalize=True)
@@ -246,19 +197,6 @@ class Model(nn.Module):
         z, ldj = self.flow(z, ldj)
         log_px = log_prior(z) + ldj
 
-        ## ===> PREVIOUS
-        #z = input
-        #ldj = torch.zeros(z.size(0), device=z.device)
-
-        #z = self.dequantize(z)
-        #z, ldj = self.logit_normalize(z, ldj)
-
-        #z, ldj = self.flow(z, ldj)
-
-        ## Compute log_pz and log_px per example
-        #log_pz = log_prior(z)
-        #log_px = log_pz + ldj
-
         return log_px
 
     def sample(self, n_samples):
@@ -273,14 +211,6 @@ class Model(nn.Module):
             z, ldj = self.flow(z, ldj, reverse=True)
             z, _ = self.logit_normalize(z, ldj, reverse=True)
         
-        ## ===> PREVIOUS
-        #z = sample_prior((n_samples,) + self.flow.z_shape).to(device)
-        #ldj = torch.zeros(z.size(0), device=z.device)
-
-        ##compute reverse flow
-        #z, ldj = self.flow.forward(z, ldj, reverse=True)
-        #z, _ = self.logit_normalize(z, ldj, reverse=True)
-
         return z
 
 
@@ -302,30 +232,20 @@ def epoch_iter(model, data, optimizer, test_mode = False,
     else:
         iters = len(dataiter)
 
-    if model.training:
-        for i in range(iters):
-            optimizer.zero_grad()
-            imgs, _ = next(dataiter)
-            imgs = imgs.to(device).reshape(-1, 28*28)
+    for i in range(iters):
+        imgs, _ = next(dataiter)
+        imgs = imgs.to(device).reshape(-1, 28*28)
+        if model.training:
             log_px = -model.forward(imgs).mean()
+            optimizer.zero_grad()
             log_px.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
             optimizer.step()
-
-            avg_bpd += log_px.item()/np.log(2)
-    else:
-        with torch.no_grad():
-            for i in range(iters):
-                optimizer.zero_grad()
-                imgs, _ = next(dataiter)
-                imgs = imgs.to(device).reshape(-1, 28*28)
+        else:
+            with torch.no_grad():
                 log_px = -model(imgs).mean()
+        avg_bpd += log_px.item()/np.log(2)
 
-                avg_bpd += log_px.item()/np.log(2)
-
-    #print(avg_bpd/28**2)
-    #os.exit()
-    
     return avg_bpd/(i+1)/28**2
 
 
@@ -355,30 +275,9 @@ def save_bpd_plot(train_curve, val_curve, filename):
     plt.tight_layout()
     plt.savefig(filename)
 
-def save_nf_samples(model, epoch, path, n_row=5):
-    n_samples = n_row**2
-    with torch.no_grad():
-        #sample from model
-        sample_ims = model.sample(n_samples).detach()
-        #reshape
-        sample_ims = sample_ims.reshape(n_samples, 1, 28, 28)
-
-        #transform samples to grid represenation
-        sample_ims = make_grid(sample_ims, nrow=n_row, normalize=True)
-
-        #format sampled images
-        samples = sample_ims.cpu().numpy().transpose(1,2,0)
-
-        #save samples
-        file_name = (f"sample_{epoch}.png")
-        plt.imsave(path + file_name, samples)
-        print(f"Saved {file_name}\n")
-
-
 def main():
     if(ARGS.t):
-        data = mnist(root=ARGS.dpath, batch_size=16
-                )[:2]  # ignore test split
+        data = mnist(root=ARGS.dpath, batch_size=16)[:2]  # ignore test split
     else:
         data = mnist(root=ARGS.dpath)[:2]  # ignore test split
 
@@ -389,6 +288,7 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     os.makedirs('images_nfs', exist_ok=True)
+    NO_IMAGES = 25
 
     train_curve, val_curve = [], []
     for epoch in range(ARGS.epochs):
@@ -404,57 +304,12 @@ def main():
         #  You can use the make_grid functionality that is already imported.
         #  Save grid to images_nfs/
         # --------------------------------------------------------------------
-        #save_nf_samples(model, epoch, 'images_nfs/')
-        os.makedirs('images_nfs/', exist_ok=True)
-
-        NO_IMAGES = 25
         samples = model.sample(NO_IMAGES)
-        grid = make_grid(
-                samples.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
+        grid = make_grid(samples.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
                 nrow = 5, normalize=True)
-        plt.imshow(grid.permute(2, 1, 0).detach().numpy())
+        plt.imshow(grid.permute(2, 1, 0).numpy())
         plt.title('Sample generated image, epoch {}'.format(epoch))
         plt.savefig('images_nfs/epoch_{}.png'.format(epoch))
-    #data = mnist(batch_size=16)[:2]  # ignore test split
-
-    #res_path = './images_nfs/'
-
-
-    ##initialise model
-    #model = Model(shape=[784])
-    #model.to(device)
-
-    ##initialise Adam optimizer
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    #os.makedirs(res_path, exist_ok=True)
-
-    #train_curve, val_curve = [], []
-    #import time
-    #for epoch in range(ARGS.epochs):
-
-    #    t0 = time.time()
-    #    bpds = run_epoch(model, data, optimizer, False, device)
-    #    t1 = time.time()
-    #    train_bpd, val_bpd = bpds
-    #    train_curve.append(train_bpd)
-    #    val_curve.append(val_bpd)
-    #    print(f"[Epoch {epoch+1}/{ARGS.epochs}] train bpd: {train_bpd:.3f} val_bpd: {val_bpd:.3f} time: {t1-t0:.2f}s")
-
-    #    # --------------------------------------------------------------------
-    #    #  Add functionality to plot samples from model during training.
-    #    #  You can use the make_grid functionality that is already imported.
-    #    #  Save grid to images_nfs/
-    #    # --------------------------------------------------------------------
-    #    # similar to function used for VAEs
-    #    save_nf_samples(model, epoch, res_path)
-
-
-    #    #save intermediate results
-    #    #losses = {"train_loss": train_curve, "val_loss": val_curve}
-    #    #np.save(res_path + "train_val_loss", losses)
-
-    #    #torch.save(model.state_dict(), res_path + "nf_model.pt")
 
     save_bpd_plot(train_curve, val_curve, 'nfs_bpd.pdf')
 
