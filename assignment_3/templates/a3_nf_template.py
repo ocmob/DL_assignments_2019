@@ -287,6 +287,8 @@ def main():
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
+            ARGS.epochs+10)
     os.makedirs('images_nfs', exist_ok=True)
     NO_IMAGES = 25
 
@@ -296,8 +298,9 @@ def main():
         train_bpd, val_bpd = bpds
         train_curve.append(train_bpd)
         val_curve.append(val_bpd)
-        print("[Epoch {epoch}] train bpd: {train_bpd} val_bpd: {val_bpd}".format(
-            epoch=epoch, train_bpd=train_bpd, val_bpd=val_bpd))
+        scheduler.step()
+        print("[Epoch {epoch}] train bpd: {train_bpd} val_bpd: {val_bpd}, LR: {lr}".format(
+            epoch=epoch, train_bpd=train_bpd, val_bpd=val_bpd, lr = optimizer.state_dict()['param_groups'][0]['lr']))
 
         # --------------------------------------------------------------------
         #  Add functionality to plot samples from model during training.
