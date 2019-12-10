@@ -15,6 +15,7 @@ class Encoder(nn.Module):
         super().__init__()
         self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
         self.hid_act = torch.nn.ReLU()
+        # NOT RELU TODO
         self.deep = deep
 
         if self.deep:
