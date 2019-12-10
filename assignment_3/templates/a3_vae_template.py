@@ -14,13 +14,12 @@ class Encoder(nn.Module):
     def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28, deep=False):
         super().__init__()
         self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
-        self.hid_act = torch.nn.ReLU()
-        # NOT RELU TODO
+        self.hid_act = torch.nn.Tanh()
         self.deep = deep
 
         if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
-            self.deep_act = torch.nn.ReLU()
+            self.deep_act = torch.nn.Tanh()
 
         self.sigma_lin = torch.nn.Linear(hidden_dim, z_dim)
         self.mu_lin = torch.nn.Linear(hidden_dim, z_dim)
@@ -56,6 +55,7 @@ class Decoder(nn.Module):
         self.hid_act = torch.nn.ReLU()
         self.deep = deep
 
+        # TODO TANH?
         if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
             self.deep_act = torch.nn.ReLU()
@@ -143,8 +143,6 @@ class VAE(nn.Module):
         return im_means.cpu()
 
 
-
-
 def epoch_iter(model, data, optimizer, device=torch.device('cuda:0'), cv=False):
     """
     Perform a single epoch for either the training or validation.
@@ -154,42 +152,26 @@ def epoch_iter(model, data, optimizer, device=torch.device('cuda:0'), cv=False):
     """
     
     average_epoch_elbo = 0
+    dataiter = iter(data)
 
-    if cv:
-        with torch.no_grad():
-            if ARGS.t:
-                dataiter = iter(data)
-                for i in range(5):
-                    images = next(dataiter).to(device)
-                    elbo_iter = model.forward(images.view(images.shape[0],-1))
-                    average_epoch_elbo += elbo_iter.cpu().item()
-            else:
-                for i, images in enumerate(data):
-                    images = images.to(device)
-                    elbo_iter = model.forward(images.view(images.shape[0],-1))
-                    average_epoch_elbo += elbo_iter.cpu().item()
+    if ARGS.t:
+        no_iters = 5
     else:
-        if ARGS.t:
-            dataiter = iter(data)
-            for i in range(5):
-                images = next(dataiter).to(device)
-                optimizer.zero_grad()
-                elbo_iter = model.forward(images.view(images.shape[0],-1))
-                elbo_iter.backward()
-                average_epoch_elbo += elbo_iter.cpu().item()
-                optimizer.step()
+        no_iters = len(dataiter)
+
+    for i in range(no_iters):
+        images = next(dataiter).to(device)
+        if not cv:
+            optimizer.zero_grad()
+            elbo_iter = model.forward(images.view(images.shape[0],-1))
+            elbo_iter.backward()
+            optimizer.step()
         else:
-            for i, images in enumerate(data):
-                images = images.to(device)
-                optimizer.zero_grad()
+            with torch.no_grad():
                 elbo_iter = model.forward(images.view(images.shape[0],-1))
-                elbo_iter.backward()
-                average_epoch_elbo += elbo_iter.cpu().item()
-                optimizer.step()
+        average_epoch_elbo += elbo_iter.cpu().item()
 
-    average_epoch_elbo /= i+1
-
-    return average_epoch_elbo
+    return average_epoch_elbo/(i+1)
 
 
 def run_epoch(model, data, optimizer, device=torch.device('cuda:0')):
@@ -235,6 +217,7 @@ def main():
         data = bmnist(batch_size=1)[:2]  # ignore test split
     else:
         data = bmnist()[:2]  # ignore test split
+
     model = VAE(z_dim=ARGS.zdim, deep=True, device=device)
     model.to(device)
 
@@ -250,7 +233,8 @@ def main():
         train_elbo, val_elbo = elbos
         train_curve.append(train_elbo)
         val_curve.append(val_elbo)
-        print(f"[Epoch {epoch}] train elbo: {train_elbo} val_elbo: {val_elbo}")
+        print("[Epoch {}] train elbo: {}, val_elbo: {}, learning rate: {}".format(
+            epoch, train_elbo, val_elbo, optimizer.state_dict()['param_groups'][0]['lr']))
         scheduler.step()
 
         # --------------------------------------------------------------------
@@ -258,8 +242,6 @@ def main():
         #  You can use the make_grid functioanlity that is already imported.
         # --------------------------------------------------------------------
         # Biggest change in sample quality is first couple of steps
-        if ((epoch+1) % 5) == 0:
-            print("[Epoch {}] current learning rate: {}".format(epoch,optimizer.state_dict()['param_groups'][0]['lr']))
         if (epoch < 5) or ((epoch+1) % 10) == 0:
             if ARGS.t:
                 save_samples(model, 10, "Samples from VAE, {}-D latent space, epoch = {}".format(ARGS.zdim, epoch+1), 
@@ -268,6 +250,11 @@ def main():
                 save_samples(model, 10, "Samples from VAE, {}-D latent space, epoch = {}".format(ARGS.zdim, epoch+1),
                         "./results/samples_epoch_{}.pdf".format(epoch+1))
 
+    # --------------------------------------------------------------------
+    #  Add functionality to plot plot the learned data manifold after
+    #  if required (i.e., if zdim == 2). You can use the make_grid
+    #  functionality that is already imported.
+    # --------------------------------------------------------------------
     if ARGS.zdim == 2:
         GRID_SIZE = 20
         means = model.get_latent(GRID_SIZE)
@@ -276,12 +263,6 @@ def main():
         plt.imshow(grid.permute(2, 1, 0).numpy())
         plt.title("Learned MNIST manifold")
         plt.savefig("./results/mnist_manifold.pdf".format(epoch+1))
-
-    # --------------------------------------------------------------------
-    #  Add functionality to plot plot the learned data manifold after
-    #  if required (i.e., if zdim == 2). You can use the make_grid
-    #  functionality that is already imported.
-    # --------------------------------------------------------------------
 
     if not ARGS.t:
         save_elbo_plot(train_curve, val_curve, 'elbo.pdf')
