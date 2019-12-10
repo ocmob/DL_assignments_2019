@@ -52,13 +52,13 @@ class Decoder(nn.Module):
     def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28, deep=False):
         super().__init__()
         self.hid_lin = torch.nn.Linear(z_dim, hidden_dim)
-        self.hid_act = torch.nn.ReLU()
+        self.hid_act = torch.nn.Tanh()
         self.deep = deep
 
         # TODO TANH?
         if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
-            self.deep_act = torch.nn.ReLU()
+            self.deep_act = torch.nn.Tanh()
 
         self.out_lin = torch.nn.Linear(hidden_dim, data_dim)
         self.out_act = torch.nn.Sigmoid()
@@ -107,11 +107,13 @@ class VAE(nn.Module):
         z = mu + torch.sqrt(torch.exp(logsig))*sample
         mu_out = self.decoder.forward(z)
 
-        kl = -1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim=1)
-        logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
-
+        kl = -1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim = 1)
+        #logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
+        bce = torch.nn.BCELoss(reduction='none')
+        nlogp = bce(mu_out, input).sum(dim=1)
+        #logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
         #TODO check ELBO
-        average_negative_elbo = (kl+logp).mean()
+        average_negative_elbo = (nlogp+kl).mean()
 
         return average_negative_elbo
 
@@ -218,7 +220,7 @@ def main():
     else:
         data = bmnist()[:2]  # ignore test split
 
-    model = VAE(z_dim=ARGS.zdim, deep=True, device=device)
+    model = VAE(z_dim=ARGS.zdim, deep=False, device=device)
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters())

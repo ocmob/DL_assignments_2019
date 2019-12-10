@@ -82,105 +82,58 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
     for epoch in range(args.n_epochs):
         d_loss = 0
         g_loss = 0
-        # TODO Change test mode handlign
+
+        dataiter = iter(dataloader)
+
         if test_mode:
-            dataiter = iter(dataloader)
-            for i in range(5):
-                imgs, _ = next(dataiter)
-                imgs = imgs.to(device).reshape(-1, 28*28)
-                for d in range(d_steps):
-                    optimizer_D.zero_grad()
-                    zbatch = torch.normal(torch.zeros(imgs.shape[0], latent_dim),
-                        torch.ones(imgs.shape[0], latent_dim)).to(device)
-                    fakebatch = generator(zbatch)
-                    mixedbatch = torch.cat((imgs, fakebatch))
-                    indices = torch.randperm(mixedbatch.shape[0]).to(device)
-
-                    # set label "1" for fakes for easier processing
-                    labels = (indices >= imgs.shape[0]).long()
-
-                    answer = discriminator(mixedbatch[indices, :])
-                    neg = torch.ones_like(answer)
-                    neg[labels>0] = -1
-                    answer = answer*neg
-
-                    loss = -1/imgs.shape[0]*torch.log(labels.float()+answer.T+EPS).sum()
-                    loss.backward()
-                    optimizer_D.step()
-                    
-                    d_loss += loss.cpu().item()
-
-                    # collect some metrics
-
-                for g in range(g_steps):
-                    optimizer_G.zero_grad()
-
-                    zbatch = torch.normal(torch.zeros(imgs.shape[0], latent_dim),
-                        torch.ones(imgs.shape[0], latent_dim)).to(device)
-                    fakebatch = generator(zbatch)
-                    answer = discriminator(fakebatch)
-                    loss = -torch.log(answer+EPS).mean()
-                    loss.backward()
-                    optimizer_G.step()
-
-                    g_loss += loss.cpu().item()
-
-                batches_done = epoch * len(dataloader) + i
-                #if batches_done % args.save_interval == 0:
-                #    with torch.no_grad():
-                #        NO_IMAGES = 5
-                #        zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
-                #                torch.ones(NO_IMAGES, latent_dim)).to(device)
-                #        fakebatch = generator(zbatch)
-                #        grid = make_grid(
-                #                fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                #                nrow = NO_IMAGES)
-                #        save_image(grid, '{}/epoch_{}_batch_{}.png'.format(img_dir, 
-                #            epoch, batches_done))
+            no_iters = 5
         else:
-            for i, (imgs, _) in enumerate(dataloader):
+            no_iters = len(dataiter)
 
-                imgs = imgs.to(device).reshape(-1, 28*28)
-                for d in range(d_steps):
-                    optimizer_D.zero_grad()
-                    zbatch = torch.normal(torch.zeros(imgs.shape[0], latent_dim),
-                        torch.ones(imgs.shape[0], latent_dim)).to(device)
-                    fakebatch = generator(zbatch)
-                    mixedbatch = torch.cat((imgs, fakebatch))
-                    indices = torch.randperm(mixedbatch.shape[0]).to(device)
+        for i in range(no_iters)
+            imgs, _ = next(dataiter)
+            imgs = imgs.to(device).reshape(-1, 28*28)
+            for d in range(d_steps):
+                optimizer_D.zero_grad()
+                zbatch = torch.normal(torch.zeros(imgs.shape[0], latent_dim),
+                    torch.ones(imgs.shape[0], latent_dim)).to(device)
+                fakebatch = generator(zbatch)
+                mixedbatch = torch.cat((imgs, fakebatch))
+                indices = torch.randperm(mixedbatch.shape[0]).to(device)
 
-                    # set label "1" for fakes for easier processing
-                    labels = (indices >= imgs.shape[0]).long()
+                # set label "1" for fakes for easier processing
+                labels = (indices >= imgs.shape[0]).long()
 
-                    answer = discriminator(mixedbatch[indices, :])
-                    neg = torch.ones_like(answer)
-                    neg[labels>0] = -1
-                    answer = answer*neg
+                answer = discriminator(mixedbatch[indices, :])
+                neg = torch.ones_like(answer)
+                neg[labels>0] = -1
+                answer = answer*neg
 
-                    loss = -1/imgs.shape[0]*torch.log(labels.float()+answer.T+EPS).sum()
-                    loss.backward()
-                    optimizer_D.step()
-                    
-                    d_loss += loss.cpu().item()
+                loss = -1/imgs.shape[0]*torch.log(labels.float()+answer.T+EPS).sum()
+                loss.backward()
+                optimizer_D.step()
+                
+                d_loss += loss.cpu().item()
 
-                    # collect some metrics
+                # collect some metrics
 
-                for g in range(g_steps):
-                    optimizer_G.zero_grad()
+            for g in range(g_steps):
+                optimizer_G.zero_grad()
 
-                    zbatch = torch.normal(torch.zeros(imgs.shape[0], latent_dim),
-                        torch.ones(imgs.shape[0], latent_dim)).to(device)
-                    fakebatch = generator(zbatch)
-                    answer = discriminator(fakebatch)
-                    loss = -torch.log(answer+EPS).mean()
-                    loss.backward()
-                    optimizer_G.step()
+                zbatch = torch.normal(torch.zeros(imgs.shape[0], latent_dim),
+                    torch.ones(imgs.shape[0], latent_dim)).to(device)
+                fakebatch = generator(zbatch)
+                answer = discriminator(fakebatch)
+                loss = -torch.log(answer+EPS).mean()
+                loss.backward()
+                optimizer_G.step()
 
-                    g_loss += loss.cpu().item()
+                g_loss += loss.cpu().item()
 
-                batches_done = epoch * len(dataloader) + i
+            batches_done = epoch * len(dataloader) + i
                 #if batches_done % args.save_interval == 0:
                 #TODO EPOCHS DONE instead of batches done
+
         with torch.no_grad():
             NO_IMAGES = 25
             zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
