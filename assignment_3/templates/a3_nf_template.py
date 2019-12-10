@@ -9,14 +9,12 @@ from datasets.mnist import mnist
 import os
 from torchvision.utils import make_grid
 
-device = torch.device('cuda:0')
-
 def log_prior(x):
     """
     Compute the elementwise log probability of a standard Gaussian, i.e.
     N(x | mu=0, sigma=1).
     """
-    halflog2pi = 0.399
+    halflog2pi = 0.5*np.log(2*np.pi)
     logp = torch.diag(-x.shape[1]*halflog2pi-1/2*(x @ x.T))
 
     ## ===> PREVIOUS
@@ -31,7 +29,7 @@ def sample_prior(size):
     Sample from a standard Gaussian.
     """
 
-    sample = torch.normal(torch.ones(size), torch.zeros(size))
+    sample = torch.normal(torch.zeros(size), torch.ones(size))
 
     ## ===> PREVIOUS
     #sample = torch.randn(size)
@@ -73,7 +71,13 @@ class Coupling(torch.nn.Module):
             nn.ReLU(),
             nn.Linear(n_hidden, 2*c_in)
             )
-#
+
+        # The nn should be initialized such that the weights of the last layer
+        # is zero, so that its initial transform is identity.
+        self.nn[-1].weight.data.zero_()
+        self.nn[-1].bias.data.zero_()
+
+#       ===> PREVIOUS
 #        # The nn should be initialized such that the weights of the last layer
 #        # is zero, so that its initial transform is identity.
 #        self.nn[-1].weight.data.zero_()
@@ -89,11 +93,6 @@ class Coupling(torch.nn.Module):
 #            nn.Linear(n_hidden, c_in),
 #            nn.Tanh()
 #        )
-
-        # The nn should be initialized such that the weights of the last layer
-        # is zero, so that its initial transform is identity.
-        self.nn[-1].weight.data.zero_()
-        self.nn[-1].bias.data.zero_()
 #        self.trans_net.weight.data.zero_()
 #        self.trans_net.bias.data.zero_()
 #        self.scale_net[0].weight.data.zero_()
@@ -109,35 +108,37 @@ class Coupling(torch.nn.Module):
         # log_scale = tanh(h), where h is the scale-output
         # from the NN.
 
-        #if not reverse:
-        #    nnout = self.nn.forward(self.mask * z)
-        #    logscale = torch.tanh(nnout)
-        #    z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + nnout)
-        #    ldj += ((1-self.mask)*logscale).sum(dim = 1)
-        #else:
-        #    nnout = self.nn.forward(self.mask * z)
-        #    logscale = -torch.tanh(nnout)
-        #    z = self.mask*z + (1-self.mask)*(z - nnout)*torch.exp(logscale)
-        #    ldj += ((1-self.mask)*logscale).sum(dim = 1)
-        z_masked = z * self.mask
-        nnout = self.nn(z_masked)
-        log_scale, trans = torch.chunk(nnout, 2, dim = 1)
-        log_scale = torch.tanh(log_scale)
-
-        #log_scale, trans = self.nn(z_masked).chunk(2, dim=1)
-        #log_scale = self.tanh(log_scale)
-
+        nnout = self.nn(self.mask * z)
+        logscale, trans = torch.chunk(nnout, 2, dim = 1)
 
         if not reverse:
-            #straight direction
-            z = z_masked + (1 - self.mask) * (z * torch.exp(log_scale) + trans)
-            #compute log determinant Jacobian
-            ldj += torch.sum((1 - self.mask) * log_scale, dim=1)
+            logscale = torch.tanh(logscale)
+            z = self.mask*z + (1-self.mask)*(z*torch.exp(logscale) + trans)
+            ldj += ((1-self.mask)*logscale).sum(dim = 1)
         else:
-            #inverse direction
-            z = z_masked + (1 - self.mask) * (z - trans) * torch.exp(-log_scale)
-            #set to zero
-            ldj = torch.zeros_like(ldj)
+            logscale = -torch.tanh(logscale)
+            z = self.mask*z + (1-self.mask)*(z - trans)*torch.exp(logscale)
+            ldj += ((1-self.mask)*logscale).sum(dim = 1)
+        ## ===> PREVIOUS
+        #z_masked = z * self.mask
+        #nnout = self.nn(z_masked)
+        #log_scale, trans = torch.chunk(nnout, 2, dim = 1)
+        #log_scale = torch.tanh(log_scale)
+
+        ##log_scale, trans = self.nn(z_masked).chunk(2, dim=1)
+        ##log_scale = self.tanh(log_scale)
+
+
+        #if not reverse:
+        #    #straight direction
+        #    z = z_masked + (1 - self.mask) * (z * torch.exp(log_scale) + trans)
+        #    #compute log determinant Jacobian
+        #    ldj += torch.sum((1 - self.mask) * log_scale, dim=1)
+        #else:
+        #    #inverse direction
+        #    z = z_masked + (1 - self.mask) * (z - trans) * torch.exp(-log_scale)
+        #    #set to zero
+        #    ldj = torch.zeros_like(ldj)
 
 
         return z, ldj
@@ -238,23 +239,25 @@ class Model(nn.Module):
         #Given input, encode the input to z space. Also keep track of ldj.
         #"""
         
-        #z = input
-        #ldj = torch.zeros(z.size(0), device=z.device)
-        #z = self.dequantize(z)
-        #z, ldj = self.logit_normalize(z, ldj)
-        #z, ldj = self.flow(z, ldj)
-        #log_px = log_prior(z) + ldj
         z = input
         ldj = torch.zeros(z.size(0), device=z.device)
-
         z = self.dequantize(z)
         z, ldj = self.logit_normalize(z, ldj)
-
         z, ldj = self.flow(z, ldj)
+        log_px = log_prior(z) + ldj
 
-        # Compute log_pz and log_px per example
-        log_pz = log_prior(z)
-        log_px = log_pz + ldj
+        ## ===> PREVIOUS
+        #z = input
+        #ldj = torch.zeros(z.size(0), device=z.device)
+
+        #z = self.dequantize(z)
+        #z, ldj = self.logit_normalize(z, ldj)
+
+        #z, ldj = self.flow(z, ldj)
+
+        ## Compute log_pz and log_px per example
+        #log_pz = log_prior(z)
+        #log_px = log_pz + ldj
 
         return log_px
 
@@ -264,17 +267,19 @@ class Model(nn.Module):
         Then invert the flow and invert the logit_normalize.
         """
 
-        #with torch.no_grad():
-        #    z = sample_prior((n_samples,) + self.flow.z_shape)
-        #    ldj = torch.zeros(z.size(0), device=z.device)
-        #    z, ldj = self.flow(z, ldj, reverse=True)
-        #    z, _ = self.logit_normalize(z, ldj, reverse=True)
-        z = sample_prior((n_samples,) + self.flow.z_shape).to(device)
-        ldj = torch.zeros(z.size(0), device=z.device)
+        with torch.no_grad():
+            z = sample_prior((n_samples,) + self.flow.z_shape)
+            ldj = torch.zeros(z.size(0), device=z.device)
+            z, ldj = self.flow(z, ldj, reverse=True)
+            z, _ = self.logit_normalize(z, ldj, reverse=True)
+        
+        ## ===> PREVIOUS
+        #z = sample_prior((n_samples,) + self.flow.z_shape).to(device)
+        #ldj = torch.zeros(z.size(0), device=z.device)
 
-        #compute reverse flow
-        z, ldj = self.flow.forward(z, ldj, reverse=True)
-        z, _ = self.logit_normalize(z, ldj, reverse=True)
+        ##compute reverse flow
+        #z, ldj = self.flow.forward(z, ldj, reverse=True)
+        #z, _ = self.logit_normalize(z, ldj, reverse=True)
 
         return z
 
@@ -289,74 +294,39 @@ def epoch_iter(model, data, optimizer, test_mode = False,
     log_2 likelihood per dimension) averaged over the complete epoch.
     """
 
-    bpds = 0.0
+    avg_bpd = 0
+    dataiter = iter(data)
 
-    for i, (imgs, _) in enumerate (data):
+    if test_mode: 
+        iters = 50
+    else:
+        iters = len(dataiter)
 
-        #forward pass
-        imgs = imgs.to(device)
-        log_px = model.forward(imgs)
-
-        #compute loss
-        loss = -1*torch.mean(log_px)
-        bpds += loss.item()
-
-        #backward pass only when in training mode
-        if model.training:
+    if model.training:
+        for i in range(iters):
             optimizer.zero_grad()
-            loss.backward()
-
-            #clip gradient to avoid exploding grads
+            imgs, _ = next(dataiter)
+            imgs = imgs.to(device).reshape(-1, 28*28)
+            log_px = -model.forward(imgs).mean()
+            log_px.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-
             optimizer.step()
 
-        #if i == 100:
-            #break
+            avg_bpd += log_px.item()/np.log(2)
+    else:
+        with torch.no_grad():
+            for i in range(iters):
+                optimizer.zero_grad()
+                imgs, _ = next(dataiter)
+                imgs = imgs.to(device).reshape(-1, 28*28)
+                log_px = -model(imgs).mean()
 
-        #print(bpds/(28**2*np.log(2)))
-        #os.exit()
+                avg_bpd += log_px.item()/np.log(2)
 
-    #for readibility
-    n_batches = i + 1
-    img_shape = imgs.shape[1] # 28 x 28
-    #compute average bit per dimension for one epoch
-    avg_bpd = bpds / (n_batches * (28**2) * np.log(2))
-
-    return avg_bpd
-
-    #avg_bpd = 0
-    #dataiter = iter(data)
-
-    #if test_mode: 
-    #    iters = 5
-    #else:
-    #    iters = len(dataiter)
-
-    #log2 = 0.30103
-
-    #if model.training:
-    #    for i in range(iters):
-    #        optimizer.zero_grad()
-    #        imgs, _ = next(dataiter)
-    #        imgs = imgs.to(device).reshape(-1, 28*28)
-    #        log_px = -model.forward(imgs).mean()
-    #        log_px.backward()
-    #        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-    #        optimizer.step()
-
-    #        avg_bpd += (log_px/log2).item()
-    #else:
-    #    with torch.no_grad():
-    #        for i in range(iters):
-    #            optimizer.zero_grad()
-    #            imgs, _ = next(dataiter)
-    #            imgs = imgs.to(device).reshape(-1, 28*28)
-    #            log_px = -model(imgs).mean()
-
-    #            avg_bpd += (log_px/log2).item()
-    #
-    #return avg_bpd/(i+1)/28**2
+    #print(avg_bpd/28**2)
+    #os.exit()
+    
+    return avg_bpd/(i+1)/28**2
 
 
 def run_epoch(model, data, optimizer, test_mode = False, 
