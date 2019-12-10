@@ -9,7 +9,7 @@ from datasets.mnist import mnist
 import os
 from torchvision.utils import make_grid
 
-device = torch.device('cpu')
+device = torch.device('cuda:0')
 
 def log_prior(x):
     """
@@ -292,10 +292,9 @@ def epoch_iter(model, data, optimizer, test_mode = False,
     bpds = 0.0
 
     for i, (imgs, _) in enumerate (data):
-        print(i, end = '\r')
 
         #forward pass
-        imgs.to(device)
+        imgs = imgs.to(device)
         log_px = model.forward(imgs)
 
         #compute loss
@@ -319,7 +318,6 @@ def epoch_iter(model, data, optimizer, test_mode = False,
         #os.exit()
 
     #for readibility
-    print()
     n_batches = i + 1
     img_shape = imgs.shape[1] # 28 x 28
     #compute average bit per dimension for one epoch
@@ -327,14 +325,6 @@ def epoch_iter(model, data, optimizer, test_mode = False,
 
     return avg_bpd
 
-    #for readibility
-    print()
-    n_batches = i + 1
-    img_shape = imgs.shape[1] # 28 x 28
-    #compute average bit per dimension for one epoch
-    avg_bpd = bpds / (n_batches * (28**2) * np.log(2))
-
-    return avg_bpd
     #avg_bpd = 0
     #dataiter = iter(data)
 
@@ -416,85 +406,85 @@ def save_nf_samples(model, epoch, path, n_row=5):
 
 
 def main():
-    #if(ARGS.t):
-    #    data = mnist(root=ARGS.dpath, batch_size=16
-    #            )[:2]  # ignore test split
-    #else:
-    #    data = mnist(root=ARGS.dpath)[:2]  # ignore test split
+    if(ARGS.t):
+        data = mnist(root=ARGS.dpath, batch_size=16
+                )[:2]  # ignore test split
+    else:
+        data = mnist(root=ARGS.dpath)[:2]  # ignore test split
 
-    #device = torch.device(ARGS.device)
+    device = torch.device(ARGS.device)
 
-    #model = Model(shape=[784])
-    #model.to(device)
-
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    #os.makedirs('images_nfs', exist_ok=True)
-
-    #train_curve, val_curve = [], []
-    #for epoch in range(ARGS.epochs):
-    #    bpds = run_epoch(model, data, optimizer, ARGS.t, device)
-    #    train_bpd, val_bpd = bpds
-    #    train_curve.append(train_bpd)
-    #    val_curve.append(val_bpd)
-    #    print("[Epoch {epoch}] train bpd: {train_bpd} val_bpd: {val_bpd}".format(
-    #        epoch=epoch, train_bpd=train_bpd, val_bpd=val_bpd))
-
-    #    # --------------------------------------------------------------------
-    #    #  Add functionality to plot samples from model during training.
-    #    #  You can use the make_grid functionality that is already imported.
-    #    #  Save grid to images_nfs/
-    #    # --------------------------------------------------------------------
-    #    save_nf_samples(model, epoch, 'images_nfs/')
-    #    #os.makedirs('images_nfs/', exist_ok=True)
-
-    #    #NO_IMAGES = 25
-    #    #samples = model.sample(NO_IMAGES)
-    #    #grid = make_grid(
-    #    #        samples.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-    #    #        nrow = 5, normalize=True)
-    #    #plt.imshow(grid.permute(2, 1, 0).numpy())
-    #    #plt.title('Sample generated image, epoch {}'.format(epoch))
-    #    #plt.savefig('images_nfs/epoch_{}.png'.format(epoch))
-    data = mnist(batch_size=16)[:2]  # ignore test split
-
-    res_path = './images_nfs/'
-
-
-    #initialise model
     model = Model(shape=[784])
     model.to(device)
 
-    #initialise Adam optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    os.makedirs(res_path, exist_ok=True)
+    os.makedirs('images_nfs', exist_ok=True)
 
     train_curve, val_curve = [], []
-    import time
     for epoch in range(ARGS.epochs):
-
-        t0 = time.time()
-        bpds = run_epoch(model, data, optimizer, False, device)
-        t1 = time.time()
+        bpds = run_epoch(model, data, optimizer, ARGS.t, device)
         train_bpd, val_bpd = bpds
         train_curve.append(train_bpd)
         val_curve.append(val_bpd)
-        print(f"[Epoch {epoch+1}/{ARGS.epochs}] train bpd: {train_bpd:.3f} val_bpd: {val_bpd:.3f} time: {t1-t0:.2f}s")
+        print("[Epoch {epoch}] train bpd: {train_bpd} val_bpd: {val_bpd}".format(
+            epoch=epoch, train_bpd=train_bpd, val_bpd=val_bpd))
 
         # --------------------------------------------------------------------
         #  Add functionality to plot samples from model during training.
         #  You can use the make_grid functionality that is already imported.
         #  Save grid to images_nfs/
         # --------------------------------------------------------------------
-        # similar to function used for VAEs
-        save_nf_samples(model, epoch, res_path)
+        #save_nf_samples(model, epoch, 'images_nfs/')
+        os.makedirs('images_nfs/', exist_ok=True)
+
+        NO_IMAGES = 25
+        samples = model.sample(NO_IMAGES)
+        grid = make_grid(
+                samples.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
+                nrow = 5, normalize=True)
+        plt.imshow(grid.permute(2, 1, 0).detach().numpy())
+        plt.title('Sample generated image, epoch {}'.format(epoch))
+        plt.savefig('images_nfs/epoch_{}.png'.format(epoch))
+    #data = mnist(batch_size=16)[:2]  # ignore test split
+
+    #res_path = './images_nfs/'
 
 
-        #save intermediate results
-        #losses = {"train_loss": train_curve, "val_loss": val_curve}
-        #np.save(res_path + "train_val_loss", losses)
+    ##initialise model
+    #model = Model(shape=[784])
+    #model.to(device)
 
-        #torch.save(model.state_dict(), res_path + "nf_model.pt")
+    ##initialise Adam optimizer
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    #os.makedirs(res_path, exist_ok=True)
+
+    #train_curve, val_curve = [], []
+    #import time
+    #for epoch in range(ARGS.epochs):
+
+    #    t0 = time.time()
+    #    bpds = run_epoch(model, data, optimizer, False, device)
+    #    t1 = time.time()
+    #    train_bpd, val_bpd = bpds
+    #    train_curve.append(train_bpd)
+    #    val_curve.append(val_bpd)
+    #    print(f"[Epoch {epoch+1}/{ARGS.epochs}] train bpd: {train_bpd:.3f} val_bpd: {val_bpd:.3f} time: {t1-t0:.2f}s")
+
+    #    # --------------------------------------------------------------------
+    #    #  Add functionality to plot samples from model during training.
+    #    #  You can use the make_grid functionality that is already imported.
+    #    #  Save grid to images_nfs/
+    #    # --------------------------------------------------------------------
+    #    # similar to function used for VAEs
+    #    save_nf_samples(model, epoch, res_path)
+
+
+    #    #save intermediate results
+    #    #losses = {"train_loss": train_curve, "val_loss": val_curve}
+    #    #np.save(res_path + "train_val_loss", losses)
+
+    #    #torch.save(model.state_dict(), res_path + "nf_model.pt")
 
     save_bpd_plot(train_curve, val_curve, 'nfs_bpd.pdf')
 
