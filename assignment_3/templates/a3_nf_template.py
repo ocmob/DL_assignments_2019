@@ -457,7 +457,7 @@ def main():
     #    #plt.savefig('images_nfs/epoch_{}.png'.format(epoch))
     data = mnist(batch_size=16)[:2]  # ignore test split
 
-    res_path = './images_nfs'
+    res_path = './images_nfs/'
 
 
     #initialise model
@@ -467,8 +467,7 @@ def main():
     #initialise Adam optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    path_imgs = res_path + 'images_nfs/'
-    os.makedirs(path_imgs, exist_ok=True)
+    os.makedirs(res_path, exist_ok=True)
 
     train_curve, val_curve = [], []
     import time
@@ -488,14 +487,14 @@ def main():
         #  Save grid to images_nfs/
         # --------------------------------------------------------------------
         # similar to function used for VAEs
-        save_nf_samples(model, epoch, path_imgs)
+        save_nf_samples(model, epoch, res_path)
 
 
         #save intermediate results
-        losses = {"train_loss": train_curve, "val_loss": val_curve}
-        np.save(res_path + "train_val_loss", losses)
+        #losses = {"train_loss": train_curve, "val_loss": val_curve}
+        #np.save(res_path + "train_val_loss", losses)
 
-        torch.save(model.state_dict(), res_path + "nf_model.pt")
+        #torch.save(model.state_dict(), res_path + "nf_model.pt")
 
     save_bpd_plot(train_curve, val_curve, 'nfs_bpd.pdf')
 
