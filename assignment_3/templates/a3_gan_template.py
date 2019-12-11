@@ -76,6 +76,7 @@ class Discriminator(nn.Module):
 
 def gen_imgs(generator, latent_dim, device, no_images, title, filename):
     with torch.no_grad():
+        generator.eval()
         zbatch = torch.normal(torch.zeros(no_images, latent_dim), 
                 torch.ones(no_images, latent_dim)).to(device)
         fakebatch = generator(zbatch)
@@ -85,6 +86,7 @@ def gen_imgs(generator, latent_dim, device, no_images, title, filename):
         plt.imshow(grid.permute(2, 1, 0).numpy())
         plt.title(title)
         plt.savefig(filename)
+        generator.train()
 
 
 
@@ -202,8 +204,9 @@ def main():
 
     # Start training
     train(dataloader, discriminator, generator, optimizer_G, optimizer_D, device,
-            args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim,
-            scheduler_G, scheduler_D, bsize)
+            args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim, 
+            None, None, bsize)
+            #scheduler_G, scheduler_D, bsize)
 
     # You can save your generator here to re-use it to generate images for your
     # report, e.g.:
