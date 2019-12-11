@@ -22,7 +22,7 @@ def sample(config):
     model.eval()
     while True:
         with torch.no_grad():
-            no_images = 25
+            no_images = 2
             zbatch = torch.normal(torch.zeros(no_images, 100), 
                     torch.ones(no_images, 100)).to(device)
             fakebatch = model(zbatch)
