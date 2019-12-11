@@ -76,7 +76,6 @@ class Discriminator(nn.Module):
 
 def gen_imgs(generator, latent_dim, device, no_images, title, filename):
     with torch.no_grad():
-        no_images = 25
         zbatch = torch.normal(torch.zeros(no_images, latent_dim), 
                 torch.ones(no_images, latent_dim)).to(device)
         fakebatch = generator(zbatch)

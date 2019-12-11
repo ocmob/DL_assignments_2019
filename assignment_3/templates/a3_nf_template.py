@@ -15,7 +15,7 @@ def log_prior(x):
     N(x | mu=0, sigma=1).
     """
     halflog2pi = 0.5*np.log(2*np.pi)
-    logp = torch.diag(-x.shape[1]*halflog2pi-1/2*(x @ x.T))
+    logp = -x.shape[1]*halflog2pi-1/2*torch.diag(x @ x.T)
 
     return logp
 
