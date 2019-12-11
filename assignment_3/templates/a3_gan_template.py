@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 import torch
 import torch.nn as nn
@@ -73,15 +74,31 @@ class Discriminator(nn.Module):
             img = module(img)
         return img
 
+def gen_imgs(generator, latent_dim, device, no_images, title, filename):
+    with torch.no_grad():
+        no_images = 25
+        zbatch = torch.normal(torch.zeros(no_images, latent_dim), 
+                torch.ones(no_images, latent_dim)).to(device)
+        fakebatch = generator(zbatch)
+        grid = make_grid(
+                fakebatch.cpu().view(no_images, 1, 28, -1).permute(0, 1, 3, 2), 
+                nrow = 5, normalize = True)
+        plt.imshow(grid.permute(2, 1, 0).numpy())
+        plt.title(title)
+        plt.savefig(filename)
+
+
 
 def train(dataloader, discriminator, generator, optimizer_G, optimizer_D, 
         device = torch.device('cuda:0'), img_dir=None, test_mode=False,
-        d_steps=1, g_steps=1, latent_dim=100, scheduler_G=None, scheduler_D=None):
+        d_steps=1, g_steps=1, latent_dim=100, scheduler_G=None, scheduler_D=None, 
+        bsize=None):
     EPS = 1e-10
 
     for epoch in range(args.n_epochs):
         d_loss = 0
         g_loss = 0
+        batches_done = 0
 
         dataiter = iter(dataloader)
 
@@ -90,7 +107,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
         else:
             no_iters = len(dataiter)
 
-        for i in range(no_iters)
+        for i in range(no_iters):
             imgs, _ = next(dataiter)
             imgs = imgs.to(device).reshape(-1, 28*28)
             for d in range(d_steps):
@@ -114,8 +131,7 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
                 optimizer_D.step()
                 
                 d_loss += loss.cpu().item()
-
-                # collect some metrics
+                batches_done += 1
 
             for g in range(g_steps):
                 optimizer_G.zero_grad()
@@ -130,22 +146,18 @@ def train(dataloader, discriminator, generator, optimizer_G, optimizer_D,
 
                 g_loss += loss.cpu().item()
 
-            batches_done = epoch * len(dataloader) + i
-                #if batches_done % args.save_interval == 0:
-                #TODO EPOCHS DONE instead of batches done
+            examples_done = (epoch * (no_iters-1) + batches_done)*bsize
 
-        with torch.no_grad():
-            NO_IMAGES = 25
-            zbatch = torch.normal(torch.zeros(NO_IMAGES, latent_dim), 
-                    torch.ones(NO_IMAGES, latent_dim)).to(device)
-            fakebatch = generator(zbatch)
-            grid = make_grid(
-                    fakebatch.cpu().view(NO_IMAGES, 1, 28, -1).permute(0, 1, 3, 2), 
-                    nrow = 5)
-            plt.imshow(grid.permute(2, 1, 0).numpy())
-            plt.title('Sample generated image, epoch {}'.format(epoch))
-            plt.savefig('{}/epoch_{}_batch_{}.png'.format(img_dir, 
-                epoch, batches_done))
+            if ((args.save_interval is not None) and 
+                    (examples_done % args.save_interval <= bsize)):
+                gen_imgs(generator, latent_dim, device, 25, 
+                        'Sample generated image, epoch {}: batch {}'.format(epoch, batches_done+1), 
+                        '{}/epoch_{}_batch_{}.png'.format(img_dir, epoch, batches_done+1))
+
+        if args.save_interval is None:
+            gen_imgs(generator, latent_dim, device, 25, 
+                    'Sample generated image, epoch {}'.format(epoch), 
+                    '{}/epoch_{}.png'.format(img_dir, epoch))
 
         if not (scheduler_G is None or scheduler_D is None):
             scheduler_G.step()
@@ -174,8 +186,6 @@ def main():
                            transforms.ToTensor(),
                            transforms.Normalize((0.5,),
                                                 (0.5,))])),
-                           #transforms.Normalize((0.5, 0.5, 0.5),
-#                                                (0.5, 0.5, 0.5))])),
         batch_size=bsize, shuffle=True, num_workers=args.num_workers)
 
     # Initialize device
@@ -194,7 +204,7 @@ def main():
     # Start training
     train(dataloader, discriminator, generator, optimizer_G, optimizer_D, device,
             args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim,
-            scheduler_G, scheduler_D)
+            scheduler_G, scheduler_D, bsize)
 
     # You can save your generator here to re-use it to generate images for your
     # report, e.g.:
@@ -218,8 +228,10 @@ if __name__ == "__main__":
                         help='learning rate')
     parser.add_argument('--latent_dim', type=int, default=100,
                         help='dimensionality of the latent space')
-    parser.add_argument('--save_interval', type=int, default=15000,
-                        help='save every SAVE_INTERVAL iterations')
+    parser.add_argument('--save_interval', type=int, default=None,
+                        help=('save every save_interval training examples.'
+                        +'Will be rounded to the batch size.'
+                        +'If left empty save every epoch'))
     parser.add_argument('--device', type=str, default="cuda:0", 
             help="Training device 'cpu' or 'cuda:0'")
     parser.add_argument('-t', action='store_true',
@@ -239,6 +251,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.t:
-        args.save_interval = 4
+        args.save_interval = 15
 
     main()
