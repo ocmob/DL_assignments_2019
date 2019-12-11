@@ -14,12 +14,12 @@ class Encoder(nn.Module):
     def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28, deep=False):
         super().__init__()
         self.hid_lin = torch.nn.Linear(data_dim, hidden_dim)
-        self.hid_act = torch.nn.Tanh()
+        self.hid_act = torch.nn.ReLU()
         self.deep = deep
 
         if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
-            self.deep_act = torch.nn.Tanh()
+            self.deep_act = torch.nn.ReLU()
 
         self.sigma_lin = torch.nn.Linear(hidden_dim, z_dim)
         self.mu_lin = torch.nn.Linear(hidden_dim, z_dim)
@@ -33,7 +33,6 @@ class Encoder(nn.Module):
         that any constraints are enforced.
         """
 
-        # TODO CONSTRAINTS?
         x = self.hid_lin.forward(input)
         x = self.hid_act.forward(x)
 
@@ -52,13 +51,12 @@ class Decoder(nn.Module):
     def __init__(self, hidden_dim=500, z_dim=20, data_dim=28*28, deep=False):
         super().__init__()
         self.hid_lin = torch.nn.Linear(z_dim, hidden_dim)
-        self.hid_act = torch.nn.Tanh()
+        self.hid_act = torch.nn.ReLU()
         self.deep = deep
 
-        # TODO TANH?
         if self.deep:
             self.deep_lin = torch.nn.Linear(hidden_dim, hidden_dim)
-            self.deep_act = torch.nn.Tanh()
+            self.deep_act = torch.nn.ReLU()
 
         self.out_lin = torch.nn.Linear(hidden_dim, data_dim)
         self.out_act = torch.nn.Sigmoid()
@@ -100,19 +98,15 @@ class VAE(nn.Module):
         negative average elbo for the given batch.
         """
 
-        mu, logsig = self.encoder.forward(input)
+        mu, logsigsq = self.encoder.forward(input)
         sample = torch.normal(torch.zeros_like(mu), 
-                torch.ones_like(logsig))
+                torch.ones_like(logsigsq))
 
-        z = mu + torch.sqrt(torch.exp(logsig))*sample
+        z = mu + torch.sqrt(torch.exp(logsigsq))*sample
         mu_out = self.decoder.forward(z)
 
-        kl = -1/2*(1+logsig-mu.pow(2)-torch.exp(logsig)).sum(dim = 1)
-        #logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
-        bce = torch.nn.BCELoss(reduction='none')
-        nlogp = bce(mu_out, input).sum(dim=1)
-        #logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
-        #TODO check ELBO
+        kl = -1/2*(1+logsigsq-mu.pow(2)-torch.exp(logsig)).sum(dim = 1)
+        logp = -(input*torch.log(mu_out+self.eps) + (1-input)*torch.log(1-mu_out+self.eps)).sum(dim=1)
         average_negative_elbo = (nlogp+kl).mean()
 
         return average_negative_elbo
