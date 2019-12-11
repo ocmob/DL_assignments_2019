@@ -40,6 +40,7 @@ class Generator(nn.Module):
             self.mod_list.append(nn.BatchNorm1d(128*(1+i)))
             self.mod_list.append(nn.LeakyReLU(neg_slope))
         self.mod_list.append(nn.Linear(128*(1+i), 784))
+        self.mod_list.append(nn.Tanh())
 
     def forward(self, z):
         for module in self.mod_list:
