@@ -43,7 +43,7 @@ def sample(config):
     p1 = zbatch[0, :].numpy()
     p2 = zbatch[1, :].numpy()
 
-    nosample = 10
+    nosample = 9
     samples = np.linspace(p1, p2, nosample)
     with torch.no_grad():
         tsamples = torch.from_numpy(samples).view(nosample, -1)
