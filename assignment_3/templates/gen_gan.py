@@ -14,7 +14,7 @@ from torchvision import datasets
 
 from a3_gan_template import Generator
 
-NORMAL = False
+NORMAL = True
 
 def sample(config):
     device = torch.device(config.device)
@@ -29,7 +29,7 @@ def sample(config):
             fakebatch = fakebatch/fakebatch.max()
             grid = make_grid(
                 fakebatch.cpu().view(no_images, 1, 28, -1).permute(0, 1, 3, 2), 
-                nrow = 2, normalize=NORMAL)
+                nrow = 5, normalize=NORMAL)
             plt.imshow(grid.permute(2, 1, 0).numpy())
             plt.show()
             print("Were images of different class? y/n any other key for exit")
@@ -43,11 +43,10 @@ def sample(config):
     p1 = zbatch[0, :].numpy()
     p2 = zbatch[1, :].numpy()
 
-    nosample = 15
+    nosample = 9
     samples = np.linspace(p1, p2, nosample)
     with torch.no_grad():
         tsamples = torch.from_numpy(samples).view(nosample, -1)
-        breakpoint()
         fakebatch = model(tsamples)
     grid = make_grid(
         fakebatch.cpu().view(nosample, 1, 28, -1).permute(0, 1, 3, 2), 

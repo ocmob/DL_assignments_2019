@@ -1,6 +1,5 @@
 import argparse
 import os
-import sys
 
 import torch
 import torch.nn as nn
@@ -206,8 +205,7 @@ def main():
     # Start training
     train(dataloader, discriminator, generator, optimizer_G, optimizer_D, device,
             args.outpath, args.t, args.dsteps, args.gsteps, args.latent_dim, 
-            None, None, bsize)
-            #scheduler_G, scheduler_D, bsize)
+            scheduler_G, scheduler_D, bsize)
 
     # You can save your generator here to re-use it to generate images for your
     # report, e.g.:
